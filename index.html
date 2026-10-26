@@ -1,0 +1,1663 @@
+<meta charset="utf-8">
+<title>Cassettes Volumes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap">
+<style>
+  /* One visual world: a cinema-dark shelf of tapes, and the website's white
+     page for reading. Every colour is set here, so the page holds on any
+     host ground. */
+  :root {
+    --cinema: #14110f;
+    --cinema-ink: #efe8de;
+    --cinema-mute: #8f857a;
+    --paper: #ffffff;
+    --ink: #000000;
+    --brown: #48382a;
+    --teal: #347e92;
+    --ground: var(--cinema);
+    --on: var(--cinema-ink);
+    --accent: var(--cinema-mute);
+    --line: color-mix(in srgb, var(--on) 32%, transparent);
+    --vol: var(--teal);
+    --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --font-ui: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --font-ar: "IBM Plex Sans Arabic", Inter, system-ui, sans-serif;
+    --gutter: clamp(16px, 4vw, 48px);
+    color-scheme: dark;
+  }
+  :root.reading { color-scheme: light; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+  body { margin: 0; background: var(--ground); color: var(--on); font: 400 16px/1.5 var(--font-ui); transition: background-color 600ms ease; }
+  .reading body { background: var(--paper); color: var(--ink); }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--on); outline-offset: 3px; }
+  .reader :focus-visible { outline-color: var(--teal); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  [lang="ar"] { font-family: var(--font-ar); }
+
+  /* The 3D tapes, drawn where their links sit. */
+  canvas#scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; opacity: 0; transition: opacity 500ms ease; }
+  canvas#scene.ready { opacity: 1; }
+  .reading canvas#scene { display: none; }
+
+  /* Header: the lettering, where you are, and the way back. */
+  .top { position: fixed; top: 0; left: 0; right: 0; z-index: 6; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: calc(16px + env(safe-area-inset-top, 0px)) var(--gutter) 16px; pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--on); }
+  .brand i { display: block; height: 44px; aspect-ratio: var(--mark-ratio, 1.4); background: currentColor; -webkit-mask: var(--mark) center / contain no-repeat; mask: var(--mark) center / contain no-repeat; }
+  .brand span, .count, .up { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .count { color: var(--accent); }
+  .up { appearance: none; background: none; border: 1px solid var(--line); color: var(--on); padding: 9px 14px; cursor: pointer; text-decoration: none; }
+  .up:hover { border-color: var(--on); }
+  .reading .top { display: none; }
+  /* Over a tape's page the header takes the page's ground, so the text
+     scrolling under it never shows through. */
+  .opened .top { background: linear-gradient(to bottom, var(--ground) 0 calc(100% - 14px), transparent); transition: background-color 600ms ease; }
+
+  /* The ruler: one tick per tape, each volume's number at its first. */
+  .ruler { position: fixed; left: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+  .ruler button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; height: 6px; }
+  .ruler i { display: block; width: 14px; height: 1px; background: color-mix(in srgb, var(--on) 40%, transparent); transition: width 200ms ease, background-color 200ms ease; }
+  .ruler button.on i { width: 26px; height: 2px; background: var(--on); }
+  .ruler b { font-family: var(--font-mono); font-size: 9px; font-weight: 400; letter-spacing: 0.08em; color: var(--accent); }
+  .opened .ruler, .opened .count, .reading .ruler { opacity: 0; pointer-events: none; }
+
+  /* The list: real links that scroll the page and take the keyboard. The
+     canvas below takes the pointer, as the stack is drawn nearer than the
+     list sits. */
+  main.stack { position: relative; z-index: 1; pointer-events: none; padding-top: clamp(150px, 24vh, 240px); }
+  ol.tapes { list-style: none; margin: 0; padding: 0 0 56vh; }
+  ol.tapes li { height: var(--pitch, 150px); display: flex; align-items: center; justify-content: center; }
+  ol.tapes a { display: block; width: min(560px, 80vw); height: 70%; color: transparent; text-decoration: none; font-size: 1px; outline: none; }
+  .ring { position: fixed; left: 0; top: 0; z-index: 2; pointer-events: none; outline: 2px solid var(--on); outline-offset: 6px; }
+  .webgl-off main.stack { pointer-events: auto; }
+  .webgl-off ol.tapes a { color: var(--on); font-size: 16px; height: auto; padding: 16px 18px; border: 1px solid var(--line); }
+  .webgl-off ol.tapes a:focus-visible { outline: 2px solid var(--on); outline-offset: 4px; }
+
+  /* A tape's page, after Stripe Press's book pages: the case stands on the
+     left, the page takes the tape's colours, and one column holds the rest. */
+  .tape-page { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 33rem); column-gap: clamp(32px, 6vw, 112px); padding: 150px var(--gutter) 120px; pointer-events: none; animation: rise 520ms 200ms ease both; }
+  .tape-page .col { grid-column: 2; pointer-events: auto; display: flex; flex-direction: column; min-width: 0; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  .where { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .t-title { margin: 14px 0 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(2.75rem, 1.6rem + 2.6vw, 4.25rem); line-height: 1; letter-spacing: -0.015em; text-wrap: balance; outline: none; }
+  .t-vol { margin: 10px 0 0; font-family: var(--font-display); font-style: italic; font-size: 1.5rem; color: var(--accent); }
+  .short { width: 3.5rem; height: 1px; border: 0; background: var(--accent); margin: 28px 0; }
+  .t-note { margin: 0 0 6px; font-weight: 300; font-size: 1.125rem; line-height: 1.65; text-wrap: pretty; }
+  .t-note bdi { font-family: var(--font-ar); }
+  .turn { align-self: flex-start; appearance: none; background: none; border: 0; border-bottom: 1px solid currentColor; padding: 14px 0 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
+  .kicker { display: flex; align-items: center; gap: 16px; margin: 64px 0 20px; font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 1.5rem; }
+  .kicker::before { content: ""; width: 3.5rem; height: 1px; background: currentColor; }
+  .pieces { list-style: none; margin: 0; padding: 0; }
+  .piece { display: grid; grid-template-columns: minmax(0, 1fr) 3.25rem; border: 1px solid var(--line); margin-top: -1px; text-decoration: none; color: inherit; transition: background-color 160ms ease; }
+  .piece:hover { background: color-mix(in srgb, var(--on) 8%, transparent); }
+  .piece .pt { padding: 15px 18px 16px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .piece .title { font-family: var(--font-display); font-size: 1.625rem; line-height: 1.05; }
+  .piece .by { font-size: 0.875rem; font-weight: 300; color: color-mix(in srgb, var(--on) 82%, transparent); }
+  .piece .go { border-left: 1px solid var(--line); display: grid; place-items: center; font-size: 1rem; }
+  .card { margin: 0; border: 1px solid var(--line); padding: clamp(22px, 3vw, 40px); position: relative; background: color-mix(in srgb, var(--ground) 70%, #000); }
+  .card .open { position: absolute; top: 14px; right: 14px; display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); padding: 9px 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; background: color-mix(in srgb, var(--ground) 70%, #000); }
+  .card .open:hover { border-color: var(--on); }
+  .card img { display: block; width: min(76%, 22rem); height: auto; margin: 26px auto 0; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+  .card blockquote { margin: 34px 0 0; font-family: var(--font-display); font-style: italic; font-size: clamp(1.5rem, 1.2rem + 0.8vw, 1.875rem); line-height: 1.22; }
+  .card blockquote span { display: block; }
+  .card figcaption { margin-top: 22px; font-size: 0.875rem; font-weight: 300; color: color-mix(in srgb, var(--on) 82%, transparent); }
+  .people { list-style: none; margin: 0; padding: 0; }
+  .people li { padding: 14px 0 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+  .people b { font-family: var(--font-display); font-weight: 400; font-size: 1.375rem; }
+  .people span { font-weight: 300; font-size: 0.9375rem; line-height: 1.55; color: color-mix(in srgb, var(--on) 82%, transparent); }
+  .next { display: block; margin-top: 80px; padding-top: 22px; border-top: 1px solid var(--line); text-decoration: none; }
+  .next small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .next b { display: block; margin-top: 10px; font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 1.5rem + 1.6vw, 3rem); line-height: 1; }
+  .next span { display: block; margin-top: 6px; font-family: var(--font-display); font-style: italic; font-size: 1.25rem; color: var(--accent); }
+  .next:hover b { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+  .fine { margin: 56px 0 0; max-width: 48ch; font-size: 0.8125rem; font-weight: 300; line-height: 1.55; color: color-mix(in srgb, var(--on) 70%, transparent); }
+
+  /* Playing a piece: the page's text steps aside for the deck. */
+  .tape-page { transition: opacity 280ms ease; }
+  .playing, .playing body { overflow: hidden; }
+  .playing .tape-page, .playing .up { opacity: 0; pointer-events: none; }
+  /* "Press" and "Play" either side of the shut deck, the storyboard's beat
+     before the key goes down; one line above the deck on a phone. */
+  .press { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: space-between; align-items: center; padding: 0 clamp(16px, 5vw, 88px); pointer-events: none; font-family: var(--font-display); font-size: clamp(3rem, 1rem + 7.5vw, 8.75rem); line-height: 1; color: var(--on); opacity: 0; transition: opacity 360ms ease; }
+  .press span { display: block; transform: translateY(12px); transition: transform 560ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .press.on { opacity: 1; }
+  .press.on span { transform: none; }
+  @media (max-width: 760px) { .press { justify-content: center; align-items: flex-start; gap: 0.28em; padding-top: calc(100px + env(safe-area-inset-top, 0px)); font-size: 3.5rem; } }
+  .playbar { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 7; display: none; gap: 8px; }
+  .playing .playbar { display: flex; }
+  .playbar button { appearance: none; background: color-mix(in srgb, var(--ground) 70%, transparent); border: 1px solid var(--line); color: var(--on); min-height: 44px; padding: 10px 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
+  .playbar button:hover { border-color: var(--on); }
+  /* The deck's window becoming the page: the paper, carrying the piece's
+     own header, is clipped to the window and grows with it as the camera
+     moves in; the reader then takes over under it. */
+  .wipe { position: fixed; inset: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity 340ms ease; --rule: 0; }
+  .wipe.live { transition: none; }
+  .wipe .paper { position: absolute; inset: 0; background: var(--paper); color: var(--ink); transform-origin: 0 0; overflow: hidden; }
+  .wipe .paper .r-bar { border-bottom-color: var(--brown); }
+  .wipe::after { content: ""; position: absolute; inset: var(--ix, 0); border: 1px dashed var(--brown); opacity: var(--rule); pointer-events: none; }
+  .piece .go { font-size: 0.75rem; transition: color 160ms ease; }
+  .piece:hover .go { color: var(--accent); }
+  .reader.arrive .prose, .reader.arrive .pv, .reader.arrive .r-end { animation: rise 640ms 140ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  /* Reading, as on the website (reading.css): white paper, Inter Light at
+     22px on a 680px column, titles in Instrument Serif capitals. */
+  .reader { position: relative; z-index: 4; background: var(--paper); color: var(--ink); min-height: 100vh; }
+  .r-bar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; min-height: 60px; padding: env(safe-area-inset-top, 0px) var(--gutter) 0; background: var(--paper); border-bottom: 1px dashed var(--brown); }
+  .r-back { justify-self: start; font-weight: 300; font-size: 0.9375rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brown); text-decoration: none; padding: 10px 0; }
+  .r-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .r-chip { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brown); }
+  .r-chip i { width: 14px; height: 14px; background: var(--vol); }
+  .r-lang { justify-self: end; display: flex; border: 1px solid var(--brown); }
+  .r-lang button { appearance: none; background: none; border: 0; padding: 7px 12px; min-width: 44px; font-size: 0.8125rem; color: var(--brown); cursor: pointer; }
+  .r-lang button + button { border-left: 1px solid var(--brown); }
+  .r-lang button[aria-pressed="true"] { background: var(--brown); color: var(--paper); }
+  .r-progress { position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; background: var(--vol); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+  .r-head { max-width: 62rem; margin: 0 auto; padding: clamp(48px, 7vw, 96px) var(--gutter) clamp(32px, 4vw, 52px); text-align: center; }
+  .r-eyebrow { margin: 0; font-weight: 300; font-size: clamp(0.9375rem, 0.85rem + 0.25vw, 1.125rem); text-transform: uppercase; letter-spacing: 0.02em; color: var(--vol-text, var(--vol)); }
+  .r-title { margin: 10px 0 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(2.75rem, 1rem + 4.6vw, 5.125rem); line-height: 1.02; letter-spacing: -0.015em; text-transform: uppercase; text-wrap: balance; outline: none; }
+  .r-title:lang(ar) { font-family: var(--font-ar); font-weight: 300; text-transform: none; letter-spacing: 0; line-height: 1.3; }
+  .r-by { margin: 14px 0 0; font-weight: 300; font-size: clamp(0.9375rem, 0.85rem + 0.25vw, 1.125rem); text-transform: uppercase; color: var(--brown); }
+  .r-sum { margin: 16px auto 0; max-width: 40ch; font-weight: 300; font-size: 1.125rem; line-height: 1.5; color: var(--brown); text-wrap: balance; }
+  .r-missing { margin: 18px auto 0; max-width: 42ch; font-size: 0.875rem; color: var(--brown); }
+  .prose { font-weight: 300; font-size: clamp(1.125rem, 1rem + 0.35vw, 1.375rem); line-height: 1.6; max-width: 42.5rem; margin: 0 auto; padding: 0 var(--gutter); }
+  .prose:lang(ar) { line-height: 1.9; }
+  .prose p { margin: 0; }
+  .prose p + p, .prose h2 + p, .prose blockquote + p { margin-top: 1.1em; }
+  .prose h2 { margin: 2.2rem 0 0.8rem; font-size: 1em; font-weight: 700; letter-spacing: 0.01em; }
+  .prose h2:lang(ar), .prose:lang(ar) h2 { letter-spacing: 0; }
+  .prose blockquote { margin: 2rem 0; padding-inline-start: 1.5rem; border-inline-start: 3px solid var(--vol); font-family: var(--font-display); font-style: italic; font-size: 1.75rem; line-height: 1.3; }
+  .prose:lang(ar) blockquote { font-family: var(--font-ar); font-style: normal; font-size: 1.5rem; }
+  .prose.poem { line-height: 1.32; }
+  .prose.poem p + p { margin-top: 1.4em; }
+  .prose.poem .line { display: block; padding-inline-start: 1.5em; text-indent: -1.5em; }
+  @media (min-width: 64rem) { .prose.poem { border-inline-start: 1px dashed var(--ink); padding-inline-start: 1.25rem; } }
+  .r-end { max-width: 42.5rem; margin: 88px auto 0; padding: 0 var(--gutter) 110px; }
+  .r-who { border-top: 1px dashed var(--brown); padding-top: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .r-who b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; }
+  .r-who span { display: block; margin-top: 4px; font-weight: 300; line-height: 1.55; color: var(--brown); }
+  .r-next { display: block; margin-top: 56px; padding: 22px 0; border-block: 1px solid var(--ink); text-decoration: none; }
+  .r-next small { display: block; font-weight: 300; font-size: 0.9375rem; text-transform: uppercase; color: var(--vol-text, var(--vol)); }
+  .r-next b { display: block; margin-top: 8px; font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 1.4rem + 2vw, 3.25rem); line-height: 1; text-transform: uppercase; }
+  .r-next span { display: block; margin-top: 8px; font-weight: 300; color: var(--brown); }
+  .r-next:hover b { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+  .reader .fine { color: var(--brown); }
+
+  /* The posters, presented as in the print view (Figma 449:2995): the
+     print large on white, a dashed teal zoom rail and fold rail beside it,
+     the set below. */
+  .pv { width: fit-content; max-width: 100%; margin: 0 auto; padding: 0 var(--gutter); }
+  .pv-main { display: flex; justify-content: center; gap: clamp(16px, 2vw, 28px); }
+  .pv-stage { position: relative; height: min(76vh, 900px); min-height: 420px; aspect-ratio: 1697 / 2400; max-width: calc(100vw - 2 * var(--gutter) - 112px); overflow: hidden; display: grid; place-items: center; touch-action: none; cursor: zoom-in; outline: none; }
+  .pv-stage.zoomed { cursor: grab; }
+  .pv-stage.panning { cursor: grabbing; }
+  .pv-stage:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+  .pv-frame { position: relative; height: 100%; max-width: 100%; aspect-ratio: 1697 / 2400; transform-origin: 50% 50%; will-change: transform; }
+  .pv-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; transition: opacity 220ms ease; }
+  .pv-frame .open { box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 22px 48px rgba(0, 0, 0, 0.16); object-fit: fill; }
+  .pv-rails { display: flex; gap: 10px; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .rail > span { font-weight: 300; font-size: 0.75rem; text-transform: uppercase; color: var(--brown); }
+  .rail-box { width: 41px; flex: 1; display: flex; flex-direction: column; border: 1px dashed var(--teal); }
+  .rail-box output { display: flex; justify-content: center; padding: 6px 0; font-size: 0.8125rem; font-weight: 300; letter-spacing: -0.01em; color: var(--teal); font-variant-numeric: tabular-nums; }
+  .rail-track { position: relative; flex: 1; cursor: grab; touch-action: none; outline: none; }
+  .rail-track:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .rail-fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--teal); }
+  .rail.off { opacity: 0.4; }
+  .rail.off .rail-track { cursor: default; }
+  .pv-under { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-top: 22px; flex-wrap: wrap; }
+  .pv-cap h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(1.75rem, 1.3rem + 1.2vw, 2.5rem); line-height: 1.05; }
+  .pv-cap h2 bdi { display: block; margin-top: 4px; font-family: var(--font-ar); font-weight: 300; font-size: 0.7em; }
+  .pv-cap p { margin: 8px 0 0; font-weight: 300; color: var(--brown); }
+  .pv-nav { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--brown); }
+  .pv-nav button { appearance: none; width: 44px; height: 44px; border: 1px solid var(--brown); background: none; cursor: pointer; font-size: 1rem; }
+  .pv-nav button:hover { background: var(--brown); color: var(--paper); }
+  .pv-strip { list-style: none; display: flex; gap: 14px; margin: 26px 0 0; padding: 0 0 6px; overflow-x: auto; }
+  .pv-strip button { appearance: none; display: block; padding: 0; border: 0; background: none; cursor: pointer; }
+  .pv-strip img { display: block; width: 76px; height: auto; aspect-ratio: 240 / 340; box-shadow: 0 6px 14px rgba(0,0,0,.14); }
+  .pv-strip button[aria-current="true"] { outline: 2px solid var(--teal); outline-offset: 4px; }
+  .pv-hint { margin: 10px 0 0; font-size: 0.8125rem; font-weight: 300; color: var(--brown); }
+  .credits { margin-top: 64px; }
+  .credits h2 { margin: 0 0 12px; font-size: 1em; font-weight: 700; }
+
+  @media (max-width: 760px) {
+    .ruler { display: none; }
+    main.stack { padding-top: 112px; }
+    .tape-page { grid-template-columns: minmax(0, 1fr); padding-top: var(--phone-top, 66vh); }
+    .tape-page .col { grid-column: 1; }
+    .count { display: none; }
+    .r-chip { display: none; }
+    .r-bar { grid-template-columns: 1fr auto; }
+    .pv { width: auto; }
+    .pv-main { flex-direction: column; }
+    .pv-stage { height: auto; width: 100%; max-width: none; min-height: 0; }
+    .pv-rails { flex-direction: column; }
+    .rail { flex-direction: row; }
+    .rail > span { width: 3.5rem; }
+    .rail-box { flex-direction: row; height: 44px; width: auto; flex: 1; }
+    .rail-box output { order: 2; width: 3.5rem; align-items: center; padding: 0; }
+    .rail-fill { top: 0; bottom: 0; right: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+<script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+</script>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<header class="top">
+  <a class="brand" href="#/" aria-label="Cassettes, all tapes"><i aria-hidden="true"></i><span>Volumes</span></a>
+  <a class="up" id="up" href="#/" hidden>← All tapes</a>
+  <span class="count" id="count"></span>
+</header>
+<div class="ruler" id="ruler" aria-hidden="true"></div>
+<div class="ring" id="ring" hidden></div>
+<div class="press" id="press" aria-hidden="true"><span>Press</span><span>Play</span></div>
+<div class="playbar" id="playbar"><button type="button" id="skip">Skip ⏭</button><button type="button" id="sound" aria-pressed="true">Sound on</button></div>
+<p class="sr" id="playing-sr" aria-live="polite"></p>
+<div class="wipe" id="wipe" aria-hidden="true" hidden><div class="paper" id="paper"></div></div>
+<main class="stack" id="stack">
+  <h1 class="sr">Cassettes: every tape, by volume and side</h1>
+  <ol class="tapes" id="tapes" aria-label="Tapes, by volume and side"></ol>
+</main>
+<article class="tape-page" id="tape" hidden></article>
+<article class="reader" id="reader" hidden></article>
+
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+/* ------------------------------------------------------------------ data */
+// Sample texts and names from the website's design data (src/lib/sample),
+// except "A Horror Tale": four real posters, credited as printed on them.
+const T = {
+  poemEn: `The room holds one chair\nand the idea of a second.\nI sit in the one\nand keep the other warm with my coat.\n---\nAcross the courtyard a television\nexplains the weather to nobody.\nI have learned to love\nwhat is said to an empty room.`,
+  poemAr: `في الغرفة كرسيٌّ واحد\nوفكرةُ كرسيٍّ ثانٍ.\nأجلس على الأول\nوأدفّئ الآخر بمعطفي.\n---\nعبر الفناء، تلفزيونٌ\nيشرح الطقس لأحد.\nتعلّمتُ أن أحبّ\nما يُقال لغرفةٍ فارغة.`,
+  fanEn: `The fan turns the way a record turns\nwhen nobody has chosen the next song.\nMy mother counts its blades out loud.\nShe says four. There are five.\n---\nIn August the city moves indoors,\nand every room is a waiting room for evening,\nfor the cooler hour that someone on the radio keeps promising will come.\n---\nI keep the blinds half closed\nso the street arrives in strips:\na bicycle, a bicycle, a man\ncarrying a mirror that carries the sky.\n---\nWe eat late. The bread is warm\nfrom the window, not the oven.\nMy brother tells a story\nhe has told before, and we let him,\nbecause the ending is the part we like.\n---\nAt night the fan is the loudest thing\nand the quietest thing we own.\nI fall asleep inside its sentence,\nthe one it has been saying since June.\n---\nIn the morning the blades are still.\nSomeone has turned it off\nto hear what the room sounds like\nwithout us in it.`,
+  fanAr: `تدور المروحة كما تدور أسطوانة\nلم يختر أحدٌ أغنيتها التالية.\nتعدّ أمي ريشاتها بصوتٍ عالٍ.\nتقول أربع. إنها خمس.\n---\nفي أغسطس تنتقل المدينة إلى الداخل،\nوتصير كل غرفةٍ غرفةَ انتظارٍ للمساء،\nللساعة الأبرد التي يَعِدُ بها مذيعٌ في الراديو ولا تأتي.\n---\nأُبقي الستائر نصف مغلقة\nفيصل الشارع شرائح:\nدراجة، دراجة، ورجلٌ\nيحمل مرآةً تحمل السماء.\n---\nنأكل متأخرين. الخبز دافئ\nمن النافذة لا من الفرن.\nيحكي أخي حكايةً\nحكاها من قبل، ونتركه،\nلأن النهاية هي ما نحبّه فيها.\n---\nفي الليل المروحة أعلى ما نملك صوتًا\nوأهدأ ما نملك.\nأنام داخل جملتها،\nالجملة التي تقولها منذ يونيو.\n---\nفي الصباح تقف الريشات.\nأطفأها أحدهم\nليسمع صوت الغرفة\nمن دوننا.`,
+  essayEn: `There is a shot, forty minutes in, where the camera stays on a doorway after everyone has left it. The film does not explain the choice. It simply waits, and asks us to wait with it.\n## The empty frame\nRooftop audiences hate this shot. Someone always laughs; someone always checks a phone. But by the third screening I had started to watch the doorway as if it were a character, the only one in the film who never lies.\n> A room is a sentence the house says to itself.\nWhat the shot teaches is patience of a particular kind: not waiting for something to happen, but noticing that something already is.`,
+  essayAr: `ثمة لقطة، بعد أربعين دقيقة، تبقى فيها الكاميرا على باب بعد أن غادره الجميع. لا يفسّر الفيلم اختياره. إنه ينتظر فقط، ويطلب منا أن ننتظر معه.\n## الإطار الفارغ\nجمهور السطح يكره هذه اللقطة. هناك دائمًا من يضحك، ومن ينظر في هاتفه. لكنني في العرض الثالث بدأت أشاهد الباب كأنه شخصية، الوحيدة في الفيلم التي لا تكذب.\n> الغرفة جملة يقولها البيت لنفسه.\nما تعلّمه اللقطة صبرٌ من نوع خاص: ليس انتظار أن يحدث شيء، بل الانتباه إلى أن شيئًا يحدث بالفعل.`,
+  storyEn: `The estate agent arrived at nine and said the flat had good light. My mother said nothing, which in our family is how you disagree.\nHe measured the living room twice. The second time he measured it without the sofa, as if the sofa had already gone.\nWe made tea because it was the only thing left in the kitchen that was ours.`,
+  storyAr: `وصل السمسار في التاسعة وقال إن الشقة فيها ضوء جيد. لم تقل أمي شيئًا، وهكذا نختلف في عائلتنا.\nقاس غرفة المعيشة مرتين. في المرة الثانية قاسها من دون الكنبة، كأن الكنبة رحلت بالفعل.\nصنعنا شايًا لأنه كان الشيء الوحيد في المطبخ الذي ما زال لنا.`,
+  waitingEn: `## Why waiting rooms?\nBecause nobody performs in them. People are between two versions of themselves.\n## Do you ask before you photograph?\nAlways. Half say no. The ones who say yes start waiting differently.`,
+  postersEn: `## Why posters?\nBecause nobody asked for them. I print a poster for a screening that won't happen, and the screening becomes a little real.\n## Who sees them?\nOnly passers-by. Some stop and look for the screening time, then laugh when they can't find it.\n## Do you print in Arabic or English?\nBoth together, the way cinema posters used to be printed in Cairo.`,
+  postersAr: `## لماذا الملصقات؟\nلأن أحدًا لم يطلبها. أطبع ملصقًا لعرض لن يحدث، فيصير العرض حقيقيًا قليلًا.\n## من يراها؟\nالمارّة فقط. يقف بعضهم ويبحث عن موعد العرض، ثم يضحك حين لا يجده.\n## هل تطبعين بالعربية أم بالإنجليزية؟\nباللغتين معًا، كما كانت تُطبع ملصقات السينما في القاهرة.`,
+};
+const sample = (en) => `${en}\nIt is a sample paragraph, written so the page has something to hold.`;
+
+const PEOPLE = {
+  laila: ["Laila Mansour", "Poet", "Laila Mansour writes poems in the margins of films she has seen twice. She lives in Alexandria."],
+  karim: ["Karim Hafez", "Film essayist", "Karim Hafez programmes a Thursday film club on a rooftop in Cairo and writes about the films that empty it."],
+  yara: ["Yara Selim", "Photographer", "Yara Selim photographs waiting rooms."],
+  omar: ["Omar Fawzy", "Writer", "Omar Fawzy's stories take place in flats that are about to be sold."],
+  dina: ["Dina Rostom", "Painter", "Dina Rostom paints windows from the inside."],
+  salma: ["Salma Idris", "Printmaker", "Salma Idris cuts linoleum for posters that were never commissioned."],
+  hana: ["Hana Abdelaziz", "Editor", "Hana Abdelaziz edits the interviews."],
+  imane: ["Imane Adel", "Writer", "Imane Adel keeps a diary of the films she walked out of."],
+  tarek: ["Tarek Nabil", "Writer", "Tarek Nabil writes in lists."],
+  ramez: ["Ramez Ragab", "Poster", "The Talisman (التعويذة)."],
+  nour: ["Nour Tarabieh", "Poster", "Nightmare (كابوس)."],
+  bassent: ["Bassent Dawoud", "Poster", "The Ambassador of Hell (سفير جهنم)."],
+  michael: ["Michael Essam", "Poster", "Anyab 1981 (أنياب ١٩٨١)."],
+};
+
+// The four posters, as their margins credit them.
+const POSTERS = [
+  { n: 14, en: "The Talisman", ar: "التعويذة", by: "Ramez Ragab" },
+  { n: 15, en: "Nightmare", ar: "كابوس", by: "Nour Tarabieh" },
+  { n: 16, en: "The Ambassador of Hell", ar: "سفير جهنم", by: "Bassent Dawoud" },
+  { n: 17, en: "Anyab 1981", ar: "أنياب ١٩٨١", by: "Michael Essam", folds: true },
+];
+const WORKSHOP = "Designed in “A Horror Tale” (حدوتة تخوف), a workshop organised by SAAD The Studio in partnership with Manassat Film Festival, May 2026. Instructors: Aya Ayman, Paula Amin and Eman Fikri. Printed at CIC, the Contemporary Image Collective.";
+
+const PIECES = {
+  "room-for-one": { en: ["Room for One", "A poem for the second chair."], ar: ["غرفة لشخص واحد", "قصيدة للكرسي الثاني."], form: "Poetry", by: ["laila"], poem: true, body: { en: T.poemEn, ar: T.poemAr } },
+  "editors-note": { en: ["Editors' Note", "Why the first volume is about rooms."], ar: ["كلمة التحرير", "لماذا يدور العدد الأول حول الغرف."], form: "Non-fiction", by: ["tarek", "imane"], body: { en: sample("We started with a room and a chair.") } },
+  "the-doorway-holds": { en: ["The Doorway Holds", "On a shot that waits after everyone leaves."], ar: ["الباب يصمد", "عن لقطة تنتظر بعد أن يغادر الجميع."], form: "Film essay", by: ["karim"], body: { en: T.essayEn, ar: T.essayAr } },
+  "good-light": { en: ["Good Light", "A flat, a mother and an estate agent."], ar: ["ضوء جيد", "شقة، وأم، وسمسار."], form: "Fiction", by: ["omar"], body: { en: T.storyEn, ar: T.storyAr } },
+  "number-seventeen": { en: ["Number Seventeen", "A waiting room in Giza, 7:40 a.m."], ar: ["رقم سبعة عشر", "غرفة انتظار في الجيزة، السابعة وأربعون دقيقة صباحًا."], form: "Photography", by: ["yara"], body: { en: sample("Seventeen chairs, one ticket machine.") } },
+  "between-two-versions": { en: ["Between Two Versions", "Yara Selim on photographing people who are waiting."], form: "Interview", by: ["hana", "yara"], body: { en: T.waitingEn } },
+  "things-left-in-the-lift": { en: ["Things Left in the Lift", "An inventory, kept for a year."], ar: ["أشياء تُركت في المصعد", "جرد استمرّ عامًا."], form: "Hybrid", by: ["tarek"], body: { en: sample("One umbrella, twice.") } },
+  "wish-you-were-here": { en: ["Wish You Were Here", "Postcards from a flat that was sold."], ar: ["ليتك كنت هنا", "بطاقات بريدية من شقة بيعت."], form: "Postcards", by: ["dina"], body: { en: sample("Twelve postcards, never posted.") } },
+  "ceiling-fan": { en: ["Ceiling Fan", "A poem written with the fan on."], ar: ["مروحة السقف", "قصيدة مكتوبة والمروحة تدور."], form: "Poetry", by: ["laila"], poem: true, body: { en: T.fanEn, ar: T.fanAr } },
+  "window-inside": { en: ["Window, Inside", "Oil on board, 40 × 50 cm."], ar: ["نافذة، من الداخل", "زيت على خشب، 40 × 50 سم."], form: "Painting", by: ["dina"], body: { en: sample("The painting was made over one winter.") } },
+  "tide-tables": { en: ["Tide Tables", "Learning the sea from a man who never swims."], ar: ["جداول المدّ", "أن تتعلّم البحر من رجل لا يسبح."], form: "Non-fiction", by: ["karim"], body: { en: sample("My uncle keeps the tide tables on the fridge.") } },
+  "the-ferry-is-late": { en: ["The Ferry Is Late", "Everyone on the pier has a reason to stay."], form: "Fiction", by: ["omar"], body: { en: sample("The ferry is late, and nobody minds.") } },
+  "night-bus-cinema": { en: ["Night Bus Cinema", "Every film looks different through a bus window."], ar: ["سينما الحافلة الليلية", "كل فيلم يبدو مختلفًا من نافذة حافلة."], form: "Film essay", by: ["karim"], body: { en: T.essayEn, ar: T.essayAr } },
+  "last-stop": { en: ["Last Stop", "A driver who reads the passengers' faces."], ar: ["المحطة الأخيرة", "سائق يقرأ وجوه الركاب."], form: "Fiction", by: ["omar"], body: { en: T.storyEn, ar: T.storyAr } },
+  "a-horror-tale": { en: ["A Horror Tale", "Four posters for Egyptian horror films, redrawn and printed in risograph."], ar: ["حدوتة تخوف", "أربعة ملصقات لأفلام رعب مصرية، أُعيد رسمها وطُبعت بالريزوغراف."], form: "Posters", count: "4 prints", by: ["ramez", "nour", "bassent", "michael"], posters: true },
+  "posters-nobody-asked-for": { en: ["Posters Nobody Asked For", "Salma Idris on printing for imaginary screenings."], ar: ["ملصقات لم يطلبها أحد", "سلمى إدريس عن الطباعة لعروض متخيَّلة."], form: "Interview", by: ["hana", "salma"], body: { en: T.postersEn, ar: T.postersAr } },
+};
+
+// Volumes, sides and playlists: Vol. 01 as the client's notes name it
+// (11 October), Vol. 88 as released on the local database.
+const VOLUMES = [
+  { n: "01", title: "Both Sides, Now", colour: "#2f5d73", ground: "#0d1f27", accent: "#9fcbd8",
+    sides: { A: [["Room For One", ["room-for-one", "editors-note"]], ["Going Under", ["the-doorway-holds", "good-light"]], ["Afloat", ["number-seventeen", "between-two-versions"]], ["Sent", ["things-left-in-the-lift", "wish-you-were-here"]]],
+             B: [["No Vacancy", ["ceiling-fan", "window-inside"]], ["Breaking Surface", ["tide-tables", "the-ferry-is-late"]], ["Adrift", ["night-bus-cinema", "last-stop"]], ["Never Delivered", ["a-horror-tale", "posters-nobody-asked-for"]]] } },
+  { n: "88", title: "The Space Between", colour: "#c8553d", ground: "#2a100a", accent: "#ffb7a0",
+    sides: { A: [["The Space Between", ["room-for-one", "the-doorway-holds", "good-light"]], ["Push & Pull", ["number-seventeen", "between-two-versions"]], ["At Sea", ["tide-tables"]]] } },
+];
+// The tape that carries the posters wears them: its J-card is Anyab 1981.
+const ART = { "01-b4": { poster: 17, colour: "#1b1817", ground: "#130f0f", accent: "#ff6b7d", red: "#e2364a", paper: "#f3ece0", note: "Four posters for Egyptian horror films, redrawn in “A Horror Tale” (حدوتة تخوف), a workshop organised by SAAD The Studio with Manassat Film Festival in May 2026, and printed in risograph at CIC." } };
+
+const TAPES = VOLUMES.flatMap((v) => Object.entries(v.sides).flatMap(([side, lists]) => lists.map(([name, slugs], i) => {
+  const key = `${v.n}-${side.toLowerCase()}${i + 1}`;
+  const art = ART[key];
+  return { key, vol: v, side, i, name, slugs, art, colour: art?.colour ?? v.colour, ground: art?.ground ?? v.ground, accent: art?.accent ?? v.accent };
+})));
+const byKey = new Map(TAPES.map((t, k) => [t.key, k]));
+
+/* --------------------------------------------------------------- helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+// Build DOM without HTML strings: text goes in as text.
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c);
+  return el;
+}
+const tag = (t) => `${t.side}${t.i + 1}`;
+const where = (t) => `Vol. ${t.vol.n} · Side ${t.side} · ${tag(t)}`;
+const minutesOf = (p) => (p.body?.en ? Math.max(1, Math.round(p.body.en.split(/\s+/).length / 190)) : 0);
+const meta = (p) => [p.form, p.count ?? (minutesOf(p) ? `${minutesOf(p)} min` : "")].filter(Boolean).join(" · ");
+const names = (p) => p.by.map((k) => PEOPLE[k][0]);
+const list = (xs) => (xs.length < 3 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+const tapeMinutes = (t) => t.slugs.reduce((n, s) => n + minutesOf(PIECES[s]), 0);
+
+/* ---------------------------------------------------------------- shell */
+const stackEl = $("#stack"), tapeEl = $("#tape"), readerEl = $("#reader"), up = $("#up");
+const listEl = $("#tapes"), ruler = $("#ruler");
+TAPES.forEach((t, k) => {
+  listEl.append(h("li", {}, h("a", { href: `#/${t.key}`, "data-k": k, text: `Vol. ${t.vol.n}, ${t.vol.title}. Side ${t.side}, ${tag(t)}: ${t.name}. ${t.slugs.length} pieces.` })));
+  ruler.append(h("button", { type: "button", tabindex: "-1", title: `Vol. ${t.vol.n} · ${tag(t)} · ${t.name}`, onclick: () => listEl.children[k].scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }) },
+    h("i"), t.side === "A" && t.i === 0 ? h("b", { text: t.vol.n }) : null));
+});
+$("#count").textContent = `${VOLUMES.length} volumes · ${TAPES.length} tapes`;
+
+// The lettering, as a mask in the text colour.
+const letteringImg = await loadImage("assets/lettering.webp");
+function loadImage(src) { return new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
+const letterings = new Map();
+function lettering(colour) {
+  if (!letteringImg) return null;
+  if (letterings.has(colour)) return letterings.get(colour);
+  const c = document.createElement("canvas"); c.width = letteringImg.width; c.height = letteringImg.height;
+  const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(letteringImg, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height);
+  const [r, gg, b] = [1, 3, 5].map((i) => parseInt(colour.slice(i, i + 2), 16));
+  for (let i = 0; i < d.data.length; i += 4) {
+    const lum = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 765;
+    d.data[i + 3] = Math.round(clamp((0.82 - lum) / 0.5, 0, 1) * d.data[i + 3]);
+    d.data[i] = r; d.data[i + 1] = gg; d.data[i + 2] = b;
+  }
+  g.putImageData(d, 0, 0);
+  letterings.set(colour, c);
+  return c;
+}
+{
+  const mk = lettering("#000000");
+  if (mk) {
+    document.documentElement.style.setProperty("--mark", `url(${mk.toDataURL()})`);
+    document.documentElement.style.setProperty("--mark-ratio", `${mk.width} / ${mk.height}`);
+  }
+}
+
+/* ------------------------------------------------------------ tape page */
+function renderTape(t, k) {
+  const art = t.art;
+  const next = TAPES[(k + 1) % TAPES.length];
+  const first = PIECES[t.slugs[0]];
+  const col = h("div", { class: "col" },
+    h("p", { class: "where", text: where(t) }),
+    h("h2", { class: "t-title", tabindex: "-1", text: t.name }),
+    h("p", { class: "t-vol", text: t.vol.title }),
+    h("hr", { class: "short" }),
+    art ? h("p", { class: "t-note", text: art.note }) : h("p", { class: "t-note", text: `${t.slugs.length} ${t.slugs.length === 1 ? "piece" : "pieces"} on this side${tapeMinutes(t) ? `, about ${tapeMinutes(t)} minutes of reading` : ""}.` }),
+    h("button", { class: "turn", type: "button", onclick: () => { turnTo += Math.PI; syncTurn(); kick(); } }, "See the back"),
+    h("h3", { class: "kicker", text: "On this tape" }),
+    h("ol", { class: "pieces" }, t.slugs.map((s) => {
+      const p = PIECES[s];
+      return h("li", {}, h("a", { class: "piece", href: `#/${t.key}/${s}` },
+        h("span", { class: "pt" }, h("span", { class: "title", text: p.en[0] }), h("span", { class: "by", text: `${list(names(p))} · ${meta(p)}` })),
+        h("span", { class: "go", "aria-hidden": "true", text: "▶" })));
+    })),
+    h("h3", { class: "kicker", text: art ? "The posters" : "From the tape" }),
+    art ? posterCard(t) : excerptCard(t, first),
+    h("h3", { class: "kicker", text: "Contributors" }),
+    h("ul", { class: "people" }, [...new Set(t.slugs.flatMap((s) => PIECES[s].by))].map((p) => h("li", {}, h("b", { text: PEOPLE[p][0] }), h("span", { text: PEOPLE[p][1] === "Poster" ? `Poster: ${PEOPLE[p][2]}` : PEOPLE[p][2] })))),
+    art ? h("p", { class: "fine", text: WORKSHOP }) : null,
+    h("a", { class: "next", href: `#/${next.key}` }, h("small", { text: "Next tape" }), h("b", { text: next.name }), h("span", { text: `${next.vol.title} · ${tag(next)}` })),
+    h("p", { class: "fine", text: "Prototype. Names and texts are the website's samples, except “A Horror Tale”: four real posters, credited as printed on them." }));
+  tapeEl.replaceChildren(col);
+  tapeEl.style.setProperty("--ground", t.ground);
+  tapeEl.style.setProperty("--accent", t.accent);
+}
+function posterCard(t) {
+  const p = POSTERS.find((x) => x.n === t.art.poster);
+  return h("figure", { class: "card" },
+    h("a", { class: "open", href: `#/${t.key}/a-horror-tale` }, "View the posters ", h("span", { "aria-hidden": "true", text: "↗" })),
+    h("img", { src: `assets/p${p.n}-1200.webp`, width: "848", height: "1200", alt: `${p.en}, a risograph poster by ${p.by}.`, loading: "lazy" }),
+    h("figcaption", { text: `${p.en} (${p.ar}), by ${p.by}. One of four.` }));
+}
+function excerptCard(t, p) {
+  const text = p.body.en.split("\n").filter((l) => l && l !== "---" && !l.startsWith("## ") && !l.startsWith("> "));
+  const lines = p.poem ? text.slice(0, 4) : [text[0].split(/(?<=\.)\s/).slice(0, 2).join(" ")];
+  return h("figure", { class: "card" },
+    h("a", { class: "open", href: `#/${t.key}/${t.slugs[0]}` }, "Read ", h("span", { "aria-hidden": "true", text: "↗" })),
+    h("blockquote", {}, lines.map((l) => h("span", { text: l }))),
+    h("figcaption", { text: `${p.en[0]}, ${list(names(p))}` }));
+}
+
+/* --------------------------------------------------------------- reader */
+let readLang = "en";
+function renderReader(t, slug) {
+  const p = PIECES[slug];
+  const i = t.slugs.indexOf(slug);
+  const nextSlug = t.slugs[i + 1];
+  const k = byKey.get(t.key);
+  const nextTape = TAPES[(k + 1) % TAPES.length];
+  const lang = p.ar ? readLang : "en";
+  readerEl.style.setProperty("--vol", t.art ? t.art.red : t.colour);
+  readerEl.style.setProperty("--vol-text", t.art ? "#c42437" : t.colour);
+  const [bar, head] = readerHead(t, p, lang);
+  const body = p.posters ? posterViewer(t) : prose(p, lang === "ar" && p.body.ar ? "ar" : "en");
+  const nextP = nextSlug ? PIECES[nextSlug] : null;
+  const end = h("footer", { class: "r-end" },
+    p.posters ? h("div", { class: "prose credits", style: "padding:0" }, h("h2", { text: "Credits" }), h("p", { text: WORKSHOP })) : null,
+    h("div", { class: "r-who" }, p.by.map((b) => h("div", {}, h("b", { text: PEOPLE[b][0] }), h("span", { text: PEOPLE[b][1] === "Poster" ? `Poster: ${PEOPLE[b][2]}` : PEOPLE[b][2] })))),
+    nextP
+      ? h("a", { class: "r-next", href: `#/${t.key}/${nextSlug}` }, h("small", { text: `Next on ${t.name}` }), h("b", { text: nextP.en[0] }), h("span", { text: `${list(names(nextP))} · ${meta(nextP)}` }))
+      : h("a", { class: "r-next", href: `#/${nextTape.key}` }, h("small", { text: "End of this tape. Next tape" }), h("b", { text: nextTape.name }), h("span", { text: `${nextTape.vol.title} · ${tag(nextTape)}` })),
+    h("p", { class: "fine", text: p.posters ? "The posters are real work, shown with their printed credits. The rest of this prototype uses the website's sample texts." : "Sample text from the website's design data." }));
+  readerEl.replaceChildren(bar, head, body, end);
+}
+// The bar and the header: the reader's, and the paper's behind the deck's glass.
+function readerHead(t, p, lang) {
+  const [title, summary] = lang === "ar" ? p.ar : p.en;
+  const bar = h("div", { class: "r-bar" },
+    h("a", { class: "r-back", href: `#/${t.key}` }, "← ", t.name),
+    h("span", { class: "r-chip" }, h("i"), `Vol. ${t.vol.n} · ${tag(t)}`),
+    h("div", { class: "r-lang", role: "group", "aria-label": "Language" },
+      h("button", { type: "button", "aria-pressed": String(lang === "en"), onclick: () => setLang("en") }, "EN"),
+      h("button", { type: "button", lang: "ar", "aria-pressed": String(lang === "ar"), disabled: p.ar ? null : true, title: p.ar ? null : "Not in Arabic yet", onclick: () => setLang("ar") }, "عربي")),
+    h("span", { class: "r-progress", "aria-hidden": "true" }));
+  const head = h("header", { class: "r-head", lang, dir: lang === "ar" ? "rtl" : "ltr" },
+    h("p", { class: "r-eyebrow", lang: "en", dir: "ltr", text: meta(p) }),
+    h("h1", { class: "r-title", tabindex: "-1", text: title }),
+    h("p", { class: "r-by", lang: "en", dir: "ltr", text: list(names(p)) }),
+    h("p", { class: "r-sum", text: summary }),
+    lang === "ar" && !p.body?.ar && !p.posters ? h("p", { class: "r-missing", lang: "en", dir: "ltr", text: "This piece's text isn't in Arabic yet; it shows in English." }) : null);
+  return [bar, head];
+}
+function setLang(l) {
+  readLang = l;
+  const r = parse();
+  if (r.piece) { const y = scrollY; renderReader(TAPES[r.k], r.piece); scrollTo(0, Math.min(y, document.documentElement.scrollHeight)); progress(); }
+}
+// The website's reading markup: stanzas or sections part on ---, ## is a
+// question or subhead, > a pull quote.
+function prose(p, lang) {
+  const src = p.body[lang];
+  const el = h("div", { class: `prose${p.poem ? " poem" : ""}`, lang, dir: lang === "ar" ? "rtl" : "ltr" });
+  if (p.poem) {
+    for (const stanza of src.split("\n---\n")) el.append(h("p", {}, stanza.split("\n").map((l) => h("span", { class: "line", text: l }))));
+    return el;
+  }
+  for (const line of src.split("\n")) {
+    if (!line.trim()) continue;
+    if (line.startsWith("## ")) el.append(h("h2", { text: line.slice(3) }));
+    else if (line.startsWith("> ")) el.append(h("blockquote", { text: line.slice(2) }));
+    else el.append(h("p", { text: line }));
+  }
+  return el;
+}
+function progress() {
+  if (readerEl.hidden) return;
+  const max = document.documentElement.scrollHeight - innerHeight;
+  readerEl.style.setProperty("--p", max > 0 ? clamp(scrollY / max, 0, 1).toFixed(4) : "1");
+}
+
+/* ------------------------------------------------- the posters' viewer */
+let viewerResize = null;
+addEventListener("resize", () => viewerResize?.());
+function posterViewer(t) {
+  let at = POSTERS.findIndex((p) => p.n === t.art.poster);
+  let zoom = 100, fold = 100, pan = { x: 0, y: 0 };
+  const open = h("img", { class: "open", alt: "", draggable: "false", decoding: "async" });
+  const half = h("img", { class: "fold", alt: "", draggable: "false", src: "assets/p17-fold-half.webp", style: "opacity:0" });
+  const shut = h("img", { class: "fold", alt: "", draggable: "false", src: "assets/p17-fold-shut.webp", style: "opacity:0" });
+  const frame = h("div", { class: "pv-frame" }, open, half, shut);
+  const stage = h("div", { class: "pv-stage", tabindex: "0", role: "img" }, frame);
+  const zoomRail = rail("Zoom", 100, 300, (v) => { zoom = v; if (zoom === 100) pan = { x: 0, y: 0 }; paint(); });
+  const foldRail = rail("Fold", 0, 100, (v) => { fold = v; paint(); });
+  const capTitle = h("h2"), capBy = h("p"), count = h("span");
+  const strip = h("ol", { class: "pv-strip", "aria-label": "The four posters" });
+  const prevBtn = h("button", { type: "button", "aria-label": "Previous poster", onclick: () => go(at - 1) }, "←");
+  const nextBtn = h("button", { type: "button", "aria-label": "Next poster", onclick: () => go(at + 1) }, "→");
+  const thumbs = POSTERS.map((p, i) => {
+    const b = h("button", { type: "button", "aria-label": `${p.en}, by ${p.by}`, onclick: () => go(i) }, h("img", { src: `assets/p${p.n}-240.webp`, width: "240", height: "340", alt: "", loading: "lazy" }));
+    strip.append(h("li", {}, b));
+    return b;
+  });
+  function go(i) {
+    at = (i + POSTERS.length) % POSTERS.length;
+    const p = POSTERS[at];
+    open.src = `assets/p${p.n}-2400.webp`;
+    open.alt = "";
+    stage.setAttribute("aria-label", `${p.en} (${p.ar}), a risograph poster by ${p.by}. ${at + 1} of ${POSTERS.length}.`);
+    capTitle.replaceChildren(p.en, h("bdi", { lang: "ar", dir: "rtl", text: p.ar }));
+    capBy.textContent = `Poster by ${p.by}`;
+    count.textContent = `${at + 1} / ${POSTERS.length}`;
+    thumbs.forEach((b, j) => b.setAttribute("aria-current", String(j === at)));
+    zoom = 100; pan = { x: 0, y: 0 }; zoomRail.set(100, true);
+    fold = 100; foldRail.set(100, true); foldRail.enable(!!p.folds, "Fold photographs exist for Anyab 1981 only");
+    paint();
+  }
+  // The fold follows the print view's rule: at and below 40 it is folded
+  // shut. Here the folds are the poster's own photographs.
+  function paint() {
+    const p = POSTERS[at];
+    const o = p.folds ? clamp((fold - 70) / 15, 0, 1) : 1;
+    const s = p.folds ? clamp((50 - fold) / 10, 0, 1) : 0;
+    open.style.opacity = o; half.style.opacity = p.folds ? clamp(1 - o - s, 0, 1) : 0; shut.style.opacity = s;
+    const z = zoom / 100;
+    const r = stage.getBoundingClientRect(), f = frame.getBoundingClientRect();
+    const fw = f.width / (frame._z || 1), fh = f.height / (frame._z || 1);
+    const mx = Math.max(0, (fw * z - r.width) / 2), my = Math.max(0, (fh * z - r.height) / 2);
+    pan.x = clamp(pan.x, -mx, mx); pan.y = clamp(pan.y, -my, my);
+    frame._z = z;
+    frame.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${z})`;
+    stage.classList.toggle("zoomed", z > 1);
+  }
+  // Drag to look around a zoomed print; a click zooms in where you click.
+  let drag = null;
+  stage.addEventListener("pointerdown", (e) => { if (e.button) return; stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y, moved: false }; });
+  stage.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 4) drag.moved = true;
+    if (zoom > 100 && drag.moved) { stage.classList.add("panning"); pan = { x: drag.px + dx, y: drag.py + dy }; paint(); }
+  });
+  stage.addEventListener("pointerup", (e) => {
+    const d = drag; drag = null; stage.classList.remove("panning");
+    if (!d || d.moved) return;
+    const r = stage.getBoundingClientRect();
+    if (zoom > 100) { zoomRail.set(100); return; }
+    pan = { x: (r.left + r.width / 2 - e.clientX) * 1.2, y: (r.top + r.height / 2 - e.clientY) * 1.2 };
+    zoomRail.set(220);
+  });
+  stage.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") go(at + 1); else if (e.key === "ArrowLeft") go(at - 1);
+    else if (e.key === "+" || e.key === "=") zoomRail.set(zoom + 20); else if (e.key === "-") zoomRail.set(zoom - 20);
+    else return;
+    e.preventDefault();
+  });
+  viewerResize = paint;
+  const el = h("section", { class: "pv", "aria-label": "Posters" },
+    h("div", { class: "pv-main" }, stage, h("div", { class: "pv-rails" }, zoomRail.el, foldRail.el)),
+    h("div", { class: "pv-under" }, h("div", { class: "pv-cap" }, capTitle, capBy), h("div", { class: "pv-nav" }, prevBtn, count, nextBtn)),
+    strip,
+    h("p", { class: "pv-hint", text: "Click the poster to zoom in, drag to look around. Arrow keys move between posters." }));
+  go(at);
+  return el;
+}
+// A dashed rail after fold-rail.tsx: the value at the top, teal filling it
+// from the foot (from the start on a phone). Arrow keys by 5, Page by 20,
+// Home and End to the ends; it can be dragged.
+function rail(label, min, max, onChange) {
+  let value = max, off = false;
+  const out = h("output", { text: `${value}%` });
+  const fill = h("div", { class: "rail-fill" });
+  const track = h("div", { class: "rail-track", role: "slider", tabindex: "0", "aria-label": label, "aria-valuemin": min, "aria-valuemax": max, "aria-valuenow": value, "aria-valuetext": `${value}%` }, fill);
+  const el = h("div", { class: "rail" }, h("div", { class: "rail-box" }, out, track), h("span", { text: label }));
+  const wide = () => matchMedia("(max-width: 760px)").matches;
+  function set(v, silent) {
+    if (off && !silent) return;
+    value = clamp(Math.round(v), min, max);
+    out.textContent = `${value}%`;
+    const f = ((value - min) / (max - min)) * 100;
+    if (wide()) { fill.style.width = `${f}%`; fill.style.height = ""; } else { fill.style.height = `${f}%`; fill.style.width = ""; }
+    track.setAttribute("aria-valuenow", value);
+    track.setAttribute("aria-valuetext", label === "Fold" && value <= 40 ? `${value}%, folded shut` : `${value}%`);
+    if (!silent) onChange(value);
+  }
+  function enable(on, why) { off = !on; el.classList.toggle("off", off); track.setAttribute("aria-disabled", off ? "true" : "false"); track.title = off ? why : ""; }
+  track.addEventListener("keydown", (e) => {
+    const step = { ArrowUp: 5, ArrowRight: 5, ArrowDown: -5, ArrowLeft: -5, PageUp: 20, PageDown: -20 }[e.key];
+    if (step) set(value + step); else if (e.key === "Home") set(min); else if (e.key === "End") set(max); else return;
+    e.preventDefault();
+  });
+  const drag = (e) => {
+    if (!(e.buttons & 1)) return;
+    const r = track.getBoundingClientRect();
+    const f = wide() ? (e.clientX - r.left) / r.width : 1 - (e.clientY - r.top) / r.height;
+    set(min + clamp(f, 0, 1) * (max - min));
+  };
+  track.addEventListener("pointerdown", (e) => { track.setPointerCapture(e.pointerId); drag(e); });
+  track.addEventListener("pointermove", drag);
+  set(value, true);
+  return { el, set, enable };
+}
+
+/* ------------------------------------------------------- the 3D stack */
+const canvas = $("#scene");
+let renderer = null;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" }); }
+catch { document.documentElement.classList.add("webgl-off"); canvas.remove(); }
+
+const groundNow = new THREE.Color("#14110f"), groundTo = new THREE.Color("#14110f");
+let W = innerWidth, H = innerHeight;
+let scene, camera, tapes = [], kick = () => {}, turnTo = 0, syncTurn = () => {}, layoutOpen = () => {}, sharpen = () => {}, remeasure = () => {}, opened = -1, stackSmooth = scrollY;
+// Playing a piece: the deck's timeline, set while it runs.
+let play = null, startPlay = null, resetPlayer = () => {}, arrive = false;
+const wipeEl = $("#wipe"), paperEl = $("#paper");
+let fadeMats = [], playingMesh = null;
+
+/* ---------------------------------------------------------------- sound */
+// The deck's mechanics, synthesised: no files. Quiet, and it can be off.
+let audio = null, hum = null, soundOn = true;
+try { soundOn = localStorage.getItem("cassettes-sound") !== "off"; } catch {}
+function actx() {
+  if (!audio) { const A = window.AudioContext || window.webkitAudioContext; if (A) try { audio = new A(); } catch {} }
+  if (audio?.state === "suspended") audio.resume();
+  return audio;
+}
+let noise = null;
+const noiseOf = (a) => { if (noise) return noise; noise = a.createBuffer(1, a.sampleRate * 0.5, a.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return noise; };
+function knock({ f = 1200, q = 1, dur = 0.05, gain = 0.2, tone = 0, toneDur = 0.08 } = {}) {
+  if (!soundOn) return; const a = actx(); if (!a) return; const t0 = a.currentTime;
+  const src = a.createBufferSource(); src.buffer = noiseOf(a);
+  const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q;
+  const g = a.createGain(); g.gain.setValueAtTime(gain, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp).connect(g).connect(a.destination); src.start(t0); src.stop(t0 + dur + 0.02);
+  if (tone) {
+    const o = a.createOscillator(); o.frequency.setValueAtTime(tone, t0); o.frequency.exponentialRampToValueAtTime(tone * 0.6, t0 + toneDur);
+    const og = a.createGain(); og.gain.setValueAtTime(gain * 0.8, t0); og.gain.exponentialRampToValueAtTime(0.0001, t0 + toneDur);
+    o.connect(og).connect(a.destination); o.start(t0); o.stop(t0 + toneDur + 0.02);
+  }
+}
+function startHum() {
+  if (!soundOn || hum) return; const a = actx(); if (!a) return;
+  const src = a.createBufferSource(); src.buffer = noiseOf(a); src.loop = true;
+  const f = a.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 240;
+  const g = a.createGain(); g.gain.setValueAtTime(0.0001, a.currentTime); g.gain.exponentialRampToValueAtTime(0.035, a.currentTime + 0.25);
+  src.connect(f).connect(g).connect(a.destination); src.start(); hum = { src, g, a };
+}
+function stopHum() {
+  if (!hum) return; const { src, g, a } = hum; hum = null;
+  g.gain.cancelScheduledValues(a.currentTime); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.25); src.stop(a.currentTime + 0.3);
+}
+// The end of the play, or a skip: the page goes white from the deck's
+// window (or at once, skipped) and the piece opens under it.
+function finishPlay() {
+  const p = play; if (!p) return; play = null;
+  stopHum();
+  // The paper at full size, whether the camera got there or it was skipped;
+  // the piece opens under it with the same header, and the paper fades.
+  wipeEl.classList.remove("live");
+  wipeEl.style.clipPath = "none"; wipeEl.style.setProperty("--ix", "0px"); wipeEl.style.setProperty("--rule", "0");
+  paperEl.style.transform = "none"; wipeEl.style.opacity = "1"; wipeEl.hidden = false;
+  document.documentElement.classList.remove("playing");
+  arrive = true;
+  location.hash = `#/${TAPES[p.k].key}/${p.slug}`;
+  setTimeout(() => { wipeEl.style.opacity = "0"; setTimeout(() => { wipeEl.hidden = true; paperEl.replaceChildren(); }, 380); }, 90);
+}
+$("#skip").addEventListener("click", finishPlay);
+{
+  const b = $("#sound");
+  const show = () => { b.textContent = soundOn ? "Sound on" : "Sound off"; b.setAttribute("aria-pressed", String(soundOn)); };
+  b.addEventListener("click", () => { soundOn = !soundOn; try { localStorage.setItem("cassettes-sound", soundOn ? "on" : "off"); } catch {} if (!soundOn) stopHum(); else if (play?.fired.has("key")) startHum(); show(); });
+  show();
+}
+// Choosing a piece on a tape's page plays it; a modified click, reduced
+// motion or no WebGL goes straight to the text.
+tapeEl.addEventListener("click", (e) => {
+  const a = e.target.closest("a[href]"); if (!a) return;
+  const m = a.getAttribute("href").match(/^#\/([^/]+)\/([^/]+)$/); if (!m) return;
+  if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (!startPlay || reduce || play || byKey.get(m[1]) !== opened) return;
+  e.preventDefault();
+  startPlay(opened, m[2]);
+});
+const mobile = () => W < 760;
+
+if (renderer) {
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.setClearColor(groundNow);
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.5;
+  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-400, 700, 1000); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xfff0e0, 0.7); rim.position.set(500, 300, -500); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(200, -700, 600); scene.add(fill);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x3a3029, 0.85); scene.add(hemi);
+  const FOV = 30;
+  camera = new THREE.PerspectiveCamera(FOV, 1, 10, 8000);
+
+  await Promise.all([
+    document.fonts.load('400 64px "Instrument Serif"'), document.fonts.load('italic 400 64px "Instrument Serif"'),
+    document.fonts.load('500 32px "IBM Plex Mono"'), document.fonts.load('400 40px "IBM Plex Sans Arabic"', "حدوتة"),
+  ]).catch(() => {});
+  const posterImgs = {}, posterHi = {};
+  for (const t of TAPES) if (t.art && !posterImgs[t.art.poster]) {
+    posterImgs[t.art.poster] = await loadImage(`assets/p${t.art.poster}-1200.webp`);
+    loadImage(`assets/p${t.art.poster}-2400.webp`).then((im) => { posterHi[t.art.poster] = im; });
+  }
+
+  // Paper grain, drawn once and laid over every face as a pattern and as
+  // the bump that catches the light.
+  const grainC = document.createElement("canvas"); grainC.width = grainC.height = 256;
+  { const g = grainC.getContext("2d"); const d = g.createImageData(256, 256); for (let i = 0; i < d.data.length; i += 4) { const n = 128 + (Math.random() - 0.5) * 90; d.data[i] = d.data[i + 1] = d.data[i + 2] = n; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); }
+  const grainTex = new THREE.CanvasTexture(grainC); grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping; grainTex.repeat.set(5, 5);
+  const grain = (g, w, hgt, a = 0.07) => { g.save(); g.globalAlpha = a; g.globalCompositeOperation = "overlay"; g.fillStyle = g.createPattern(grainC, "repeat"); g.fillRect(0, 0, w, hgt); g.restore(); };
+  const onColour = (hex) => { const c = new THREE.Color(hex); return c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722 > 0.5 ? "#1d1610" : "#f1ebe1"; };
+  const deeper = (hex, f) => "#" + new THREE.Color(hex).multiplyScalar(f).getHexString();
+  const cover = (g, img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+    const r = Math.max(dw / sw, dh / sh), w = dw / r, hh = dh / r;
+    g.drawImage(img, sx + (sw - w) / 2, sy + (sh - hh) / 2, w, hh, dx, dy, dw, dh);
+  };
+  const wrapText = (g, text, x, y, max, lh) => { const words = text.split(" "); let line = ""; for (const w of words) { const n = line ? line + " " + w : w; if (g.measureText(n).width > max && line) { g.fillText(line, x, y); y += lh; line = w; } else line = n; } g.fillText(line, x, y); return y; };
+
+  // The spine: the edge you read in the stack.
+  function spineCanvas(t, foil) {
+    const c = document.createElement("canvas"); c.width = 1280; c.height = 198;
+    const g = c.getContext("2d"); const W2 = c.width, H2 = c.height;
+    const fg = onColour(t.colour);
+    const ink = (x) => (foil ? "#000" : x), shine = (x) => (foil ? "#fff" : x);
+    g.fillStyle = foil ? "#000" : t.colour; g.fillRect(0, 0, W2, H2);
+    if (t.art && !foil) {
+      // Riso black and the poster's own figures, like a J-card's wrap.
+      const img = posterImgs[t.art.poster];
+      const split = Math.round(W2 * 0.6);
+      if (img) cover(g, img, img.width * 0.12, img.height * 0.3, img.width * 0.84, img.height * 0.16, split, 0, W2 - split, H2);
+      g.fillStyle = t.art.red; g.fillRect(split - 6, 0, 6, H2);
+    }
+    if (!foil) {
+      grain(g, W2, H2, 0.08);
+      const ao = g.createLinearGradient(0, 0, 0, H2);
+      ao.addColorStop(0, "rgba(0,0,0,0.28)"); ao.addColorStop(0.1, "rgba(0,0,0,0)"); ao.addColorStop(0.9, "rgba(0,0,0,0)"); ao.addColorStop(1, "rgba(0,0,0,0.32)");
+      g.fillStyle = ao; g.fillRect(0, 0, W2, H2);
+    }
+    const fit = (text, font, size, max) => { let z = size; do { g.font = font.replace("{}", z); } while (g.measureText(text).width > max && --z > 12); };
+    const tx = t.art ? "#f3ece0" : fg;
+    g.textBaseline = "middle";
+    g.fillStyle = ink(tx); g.strokeStyle = ink(tx);
+    g.font = '500 26px "IBM Plex Mono"';
+    g.fillText(`VOL. ${t.vol.n}`, 44, 80);
+    fit(t.vol.title.toUpperCase(), '400 {}px "IBM Plex Mono"', 19, 226);
+    g.fillText(t.vol.title.toUpperCase(), 44, 120);
+    g.lineWidth = 2;
+    g.font = '500 22px "IBM Plex Mono"';
+    if (t.art) { g.fillStyle = foil ? "#000" : t.art.red; g.fillRect(290, 75, 58, 48); g.fillStyle = ink("#fff"); }
+    else g.strokeRect(290, 75, 58, 48);
+    g.fillText(tag(t), 302, H2 / 2 + 1);
+    // The title is foil-stamped: it catches the light as the stack moves.
+    g.fillStyle = shine(tx);
+    if (t.art) { fit(t.name, 'italic 400 {}px "Instrument Serif"', 72, 380); g.textAlign = "left"; g.fillText(t.name, 380, H2 / 2 + 4); }
+    else { fit(t.name, 'italic 400 {}px "Instrument Serif"', 72, 560); g.textAlign = "center"; g.fillText(t.name, 700, H2 / 2 + 4); }
+    g.textAlign = "left";
+    const mark = t.art ? null : lettering(foil ? "#ffffff" : fg);
+    if (mark) { const mh = 96, mw = (mark.width / mark.height) * mh; g.drawImage(mark, W2 - 40 - mw, (H2 - mh) / 2, mw, mh); }
+    return c;
+  }
+  // The J-card's front and back, drawn upright (70 × 110). `s` scales the
+  // drawing: a small one for the stack, a full one when the tape is open.
+  function frontCanvas(t, s) {
+    const c = document.createElement("canvas"); c.width = Math.round(1120 * s); c.height = Math.round(1760 * s);
+    const g = c.getContext("2d"); g.scale(s, s);
+    const fg = onColour(t.colour);
+    if (t.art) {
+      const img = (s === 1 && posterHi[t.art.poster]) || posterImgs[t.art.poster];
+      g.fillStyle = t.art.paper; g.fillRect(0, 0, 1120, 1760);
+      if (img) cover(g, img, img.width * 0.105, img.height * 0.025, img.width * 0.87, img.height * 0.95, 0, 132, 1120, 1628);
+      grain(g, 1120, 1760, 0.06);
+      g.fillStyle = "#161313"; g.textBaseline = "middle";
+      g.font = '500 30px "IBM Plex Mono"';
+      g.fillText(`VOL. ${t.vol.n}  ·  ${tag(t)}  ·  ${t.name.toUpperCase()}`, 60, 68);
+      const mark = lettering(t.art.red);
+      if (mark) { const mh = 96, mw = (mark.width / mark.height) * mh; g.drawImage(mark, 1060 - mw, 20, mw, mh); }
+      return c;
+    }
+    g.fillStyle = t.colour; g.fillRect(0, 0, 1120, 1760);
+    grain(g, 1120, 1760, 0.08);
+    g.fillStyle = fg; g.strokeStyle = fg; g.textBaseline = "alphabetic";
+    g.font = '500 30px "IBM Plex Mono"';
+    g.fillText(`VOL. ${t.vol.n}`, 80, 120);
+    g.textAlign = "right"; g.fillText(`SIDE ${t.side}  ·  ${tag(t)}`, 1040, 120); g.textAlign = "left";
+    g.lineWidth = 2; g.beginPath(); g.moveTo(80, 160); g.lineTo(1040, 160); g.stroke();
+    // The side's letter, large and open, as a J-card's graphic.
+    g.save(); g.globalAlpha = 0.16; g.font = '400 1100px "Instrument Serif"'; g.fillText(t.side, 380, 1380); g.restore();
+    g.font = 'italic 400 168px "Instrument Serif"';
+    wrapText(g, t.name, 80, 420, 960, 160);
+    g.beginPath(); g.moveTo(80, 1440); g.lineTo(1040, 1440); g.stroke();
+    g.font = '400 76px "Instrument Serif"'; g.fillText(t.vol.title, 80, 1540);
+    g.font = '400 28px "IBM Plex Mono"'; g.fillText(`${t.slugs.length} PIECES`, 80, 1640);
+    const mark = lettering(fg);
+    if (mark) { const mh = 150, mw = (mark.width / mark.height) * mh; g.drawImage(mark, 1040 - mw, 1530, mw, mh); }
+    return c;
+  }
+  function backCanvas(t, s) {
+    const c = document.createElement("canvas"); c.width = Math.round(1120 * s); c.height = Math.round(1760 * s);
+    const g = c.getContext("2d"); g.scale(s, s);
+    if (t.art) {
+      // The poster's own margins: cream paper, riso red, both languages.
+      g.fillStyle = t.art.paper; g.fillRect(0, 0, 1120, 1760); grain(g, 1120, 1760, 0.06);
+      g.fillStyle = t.art.red; g.strokeStyle = t.art.red; g.textBaseline = "alphabetic";
+      g.font = '400 92px "IBM Plex Sans Arabic"'; g.textAlign = "right"; g.direction = "rtl"; g.fillText("حدوتة تخوف", 1040, 190);
+      g.direction = "ltr"; g.textAlign = "left";
+      g.font = 'italic 400 84px "Instrument Serif"'; g.fillText("A Horror Tale", 80, 300);
+      g.setLineDash([8, 8]); g.lineWidth = 2; g.beginPath(); g.moveTo(80, 350); g.lineTo(1040, 350); g.stroke();
+      let y = 470;
+      POSTERS.forEach((p, i) => {
+        g.font = '500 26px "IBM Plex Mono"'; g.fillText(String(i + 1).padStart(2, "0"), 80, y);
+        g.font = '400 64px "Instrument Serif"'; g.fillText(p.en, 150, y + 4);
+        g.font = '400 30px "IBM Plex Mono"'; g.fillText(p.by, 150, y + 60);
+        g.font = '400 40px "IBM Plex Sans Arabic"'; g.textAlign = "right"; g.direction = "rtl"; g.fillText(p.ar, 1040, y + 62); g.direction = "ltr"; g.textAlign = "left";
+        g.beginPath(); g.moveTo(80, y + 104); g.lineTo(1040, y + 104); g.stroke();
+        y += 200;
+      });
+      g.setLineDash([]);
+      g.font = '400 25px "IBM Plex Mono"';
+      ["SAAD The Studio × Manassat Film Festival", "Workshop, May 2026 · Printed at CIC"].forEach((l, i) => g.fillText(l, 80, 1560 + i * 44));
+      const mark = lettering(t.art.red);
+      if (mark) { const mh = 130, mw = (mark.width / mark.height) * mh; g.drawImage(mark, 1040 - mw, 1500, mw, mh); }
+      return c;
+    }
+    const fg = onColour(t.colour);
+    g.fillStyle = deeper(t.colour, 0.86); g.fillRect(0, 0, 1120, 1760); grain(g, 1120, 1760, 0.08);
+    g.fillStyle = fg; g.strokeStyle = fg; g.textBaseline = "alphabetic";
+    g.font = '500 30px "IBM Plex Mono"'; g.fillText(`SIDE ${t.side}  ·  ${tag(t)}  ·  ${t.name.toUpperCase()}`, 80, 120);
+    g.lineWidth = 2; g.beginPath(); g.moveTo(80, 160); g.lineTo(1040, 160); g.stroke();
+    let y = 320;
+    t.slugs.forEach((sl, i) => {
+      const p = PIECES[sl];
+      g.font = '500 28px "IBM Plex Mono"'; g.fillText(String(i + 1).padStart(2, "0"), 80, y);
+      g.font = '400 84px "Instrument Serif"'; y = wrapText(g, p.en[0], 150, y + 8, 880, 80);
+      g.font = 'italic 400 46px "Instrument Serif"'; g.fillText(list(names(p)), 150, y + 64);
+      g.font = '400 26px "IBM Plex Mono"'; g.fillText(meta(p).toUpperCase(), 150, y + 116);
+      g.globalAlpha = 0.4; g.fillRect(80, y + 160, 960, 2); g.globalAlpha = 1;
+      y += 280;
+    });
+    g.font = '400 64px "Instrument Serif"'; g.fillText(`Vol. ${t.vol.n} · ${t.vol.title}`, 80, 1660);
+    const mark = lettering(fg);
+    if (mark) { const mh = 130, mw = (mark.width / mark.height) * mh; g.drawImage(mark, 1040 - mw, 1560, mw, mh); }
+    return c;
+  }
+  const tex = (c, colour = true) => {
+    const x = new THREE.CanvasTexture(c);
+    if (colour) x.colorSpace = THREE.SRGBColorSpace;
+    x.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    return x;
+  };
+  // Upright J-card art lies on the case's broad faces turned a quarter.
+  const faceTex = (c) => { const x = tex(c); x.center.set(0.5, 0.5); x.rotation = Math.PI / 2; return x; };
+
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const LO = 0.25;
+  tapes = TAPES.map((t, k) => {
+    const foilTex = tex(spineCanvas(t, true), false);
+    const spine = new THREE.MeshStandardMaterial({ map: tex(spineCanvas(t, false)), metalnessMap: foilTex, roughnessMap: foilTex, bumpMap: grainTex, bumpScale: 0.35, metalness: 1, roughness: 1 });
+    spine.onBeforeCompile = (s) => {
+      s.fragmentShader = s.fragmentShader
+        .replace("#include <roughnessmap_fragment>", "float roughnessFactor = roughness; vec4 texelRoughness = texture2D( roughnessMap, vRoughnessMapUv ); roughnessFactor = mix(0.82, 0.32, texelRoughness.g);")
+        .replace("#include <metalnessmap_fragment>", "float metalnessFactor = metalness; vec4 texelMetalness = texture2D( metalnessMap, vMetalnessMapUv ); metalnessFactor = mix(0.0, 0.6, texelMetalness.b);");
+    };
+    const paper = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.8, metalness: 0, bumpMap: grainTex, bumpScale: 0.25 });
+    const front = paper(faceTex(frontCanvas(t, LO))), back = paper(faceTex(backCanvas(t, LO)));
+    const edge = new THREE.MeshStandardMaterial({ color: new THREE.Color(deeper(t.colour, 0.9)), roughness: 0.75, bumpMap: grainTex, bumpScale: 0.2 });
+    const mesh = new THREE.Mesh(geo, [edge, edge, front, back, spine, edge]);
+    const g = new THREE.Group(); g.add(mesh); scene.add(g);
+    g.userData = { t, k, mesh, front, back, hi: null, hover: 0, open: 0, away: 0, side: -1, turn: 0, px: 0, py: 0 };
+    return g;
+  });
+
+  let w = 560, openScale = 1, openX = 0, openY = 0;
+  let centers = [];
+  function measure() {
+    centers = [...listEl.children].map((li) => li.offsetTop + stackEl.offsetTop + li.offsetHeight / 2);
+  }
+  remeasure = measure;
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    renderer.setSize(W, H, false);
+    camera.aspect = W / H;
+    camZ = (H / 2) / Math.tan((FOV * Math.PI) / 360);
+    camera.position.set(0, 0, camZ); camera.rotation.set(0, 0, 0);
+    camera.updateProjectionMatrix();
+    document.documentElement.style.setProperty("--pitch", `${mobile() ? 118 : 150}px`);
+    w = Math.min(560, W * 0.8);
+    for (const g of tapes) g.userData.mesh.scale.set(w, w * (17 / 110), w * (70 / 110));
+    if (!stackEl.hidden) measure();
+    layoutOpen();
+    kick();
+  }
+  // Where an open tape stands: left of the text column on a desktop, above
+  // the text on a phone (and scrolling away with it).
+  layoutOpen = () => {
+    const col = tapeEl.hidden ? null : $(".col", tapeEl);
+    if (mobile()) {
+      const tall = Math.min(H * 0.44, (W * 0.62) / (70 / 110));
+      openScale = tall / w; openX = 0; openY = 70 + tall / 2 + 18;
+      document.documentElement.style.setProperty("--phone-top", `${Math.round(openY + tall / 2 + 40)}px`);
+    } else {
+      const left = col ? col.getBoundingClientRect().left : W * 0.55;
+      const tall = Math.min(H * 0.62, (left - 120) / 0.75);
+      openScale = tall / w; openX = left / 2 - W / 2 + 10; openY = H / 2 + 10;
+    }
+  };
+
+  // Clicks and taps pick the tape under the pointer.
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pick(x, y) {
+    ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(tapes.map((g) => g.userData.mesh), false)[0];
+    return hit ? tapes.findIndex((g) => g.userData.mesh === hit.object) : -1;
+  }
+  const pointer = { x: 0, y: 0, in: false };
+  let hovered = -1, focused = -1, keyboard = false, turning = null;
+  addEventListener("keydown", () => { keyboard = true; }, true);
+  addEventListener("pointerdown", () => { keyboard = false; }, true);
+  addEventListener("pointermove", (e) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.in = true; if (turning) turnTo = turning.from + (e.clientX - turning.x) * 0.012; kick(); }, { passive: true });
+  addEventListener("mouseout", (e) => { if (!e.relatedTarget) { pointer.in = false; kick(); } });
+  canvas.addEventListener("click", (e) => { if (opened >= 0) return; const k = pick(e.clientX, e.clientY); if (k >= 0) location.hash = `#/${TAPES[k].key}`; });
+  // Opened: drag the case round to read its back; it settles face or back.
+  canvas.addEventListener("pointerdown", (e) => {
+    if (opened < 0 || pick(e.clientX, e.clientY) !== opened) return;
+    turning = { x: e.clientX, from: turnTo }; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing";
+  });
+  const settle = () => { if (!turning) return; turning = null; turnTo = Math.round(turnTo / Math.PI) * Math.PI; canvas.style.cursor = "grab"; syncTurn(); kick(); };
+  canvas.addEventListener("pointerup", settle); canvas.addEventListener("pointercancel", settle);
+  syncTurn = () => { const b = $(".turn", tapeEl); if (b) b.textContent = Math.round(turnTo / Math.PI) % 2 ? "See the front" : "See the back"; };
+  listEl.addEventListener("focusin", (e) => { const k = Number(e.target.dataset.k); focused = Number.isNaN(k) ? -1 : k; kick(); });
+  listEl.addEventListener("focusout", () => { focused = -1; kick(); });
+
+  const ring = $("#ring"), corner = new THREE.Vector3();
+  function drawRing() {
+    const k = opened < 0 && keyboard ? focused : -1;
+    ring.hidden = k < 0;
+    if (k < 0) return;
+    const m = tapes[k].userData.mesh; m.updateWorldMatrix(true, false);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < 4; i++) {
+      corner.set(i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, 0.5).applyMatrix4(m.matrixWorld).project(camera);
+      const x = ((corner.x + 1) / 2) * W, y = ((1 - corner.y) / 2) * H;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    ring.style.transform = `translate(${x0}px, ${y0}px)`; ring.style.width = `${x1 - x0}px`; ring.style.height = `${y1 - y0}px`;
+  }
+
+  // The open tape's J-card at full size; the others keep the small one.
+  sharpen = (g, on) => {
+    const u = g.userData;
+    if (on && !u.hi) {
+      u.hi = { front: faceTex(frontCanvas(u.t, 1)), back: faceTex(backCanvas(u.t, 1)), lo: [u.front.map, u.back.map] };
+      u.front.map = u.hi.front; u.back.map = u.hi.back; u.front.needsUpdate = u.back.needsUpdate = true;
+    } else if (!on && u.hi) {
+      [u.front.map, u.back.map] = u.hi.lo; u.hi.front.dispose(); u.hi.back.dispose(); u.hi = null;
+    }
+  };
+
+  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  const UPRIGHT = new THREE.Quaternion().setFromAxisAngle(Z, -Math.PI / 2).multiply(new THREE.Quaternion().setFromAxisAngle(X, Math.PI / 2));
+  const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), qT = new THREE.Quaternion(), eul = new THREE.Euler();
+  const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+  /* ------------------------------------------------- the reading deck */
+  // Choosing a piece on a tape's page plays it, after the client's own
+  // storyboard (Figma 262:2930): the case's lid hinges open, the cassette
+  // lifts out and is slid down into the deck's tilted door, the door shuts
+  // onto the spindles, "Press / Play" stands either side, Play goes down,
+  // the reels turn, and the camera moves into the window, where the page
+  // arrives through the glass. The deck is the storyboard's: a light body
+  // with square corners and a dashed inner border, keys as tabs on top, the
+  // label in the tape's colour carrying the piece's own metadata. Built in
+  // units of the cassette's width, then scaled.
+  const CREAM = "#ede6d8", INK = "#48382a", TEAL = "#347e92", BODY = "#d8d4ce", TAB = "#f6f3ee";
+  const rr = (g, x, y, w2, h2, r) => { g.beginPath(); g.roundRect(x, y, w2, h2, r); };
+  const plain = (hex, extra = {}) => new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: 0.62, metalness: 0, bumpMap: grainTex, bumpScale: 0.1, ...extra });
+  const paint = (w2, h2, draw, colour = true) => { const c = document.createElement("canvas"); c.width = w2; c.height = h2; draw(c.getContext("2d"), w2, h2); return tex(c, colour); };
+  // Baked light: a soft shade from one edge, as the deck's faces are flat.
+  const shade = (g, x, y, w2, h2, dir, a, len) => {
+    const [x0, y0, x1, y1] = { down: [x, y, x, y + len], up: [x, y + h2, x, y + h2 - len], right: [x, y, x + len, y], left: [x + w2, y, x + w2 - len, y] }[dir];
+    const lg = g.createLinearGradient(x0, y0, x1, y1); lg.addColorStop(0, `rgba(0,0,0,${a})`); lg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = lg; g.fillRect(x, y, w2, h2);
+  };
+  const dashes = (g, x, y, w2, h2, colour, lw = 2, dash = [10, 8]) => { g.save(); g.strokeStyle = colour; g.lineWidth = lw; g.setLineDash(dash); g.strokeRect(x, y, w2, h2); g.restore(); };
+  const spacing = (g, px) => { try { g.letterSpacing = `${px}px`; } catch {} };
+  const fitFont = (g, text, font, size, max, min = 12) => { let z = size; do { g.font = font.replace("{}", z); } while (g.measureText(text).width > max && --z > min); };
+  const wrapLines = (g, text, max) => { const out = []; let line = ""; for (const w2 of text.split(" ")) { const n = line ? `${line} ${w2}` : w2; if (g.measureText(n).width > max && line) { out.push(line); line = w2; } else line = n; } if (line) out.push(line); return out; };
+
+  // The cassette: 100 × 63.8 × 12 mm, with two round reel windows as the
+  // storyboard draws it. The label fills the face in the tape's colour and
+  // carries the piece's own metadata, centred.
+  const CW = 1, CH = 0.638, CD = 0.12, HUB_X = 0.2125, HUB_Y = 0.0623, HUB_R = 0.0575, WIN_R = 0.092;
+  const FACE_W = 1600, FACE_H = 1021, PX = FACE_W / CW;
+  const faceX = (x) => FACE_W / 2 + x * PX, faceY = (y) => FACE_H / 2 - y * PX;
+  function labelOf(t, p) {
+    const art = t.art;
+    const kind = p.posters ? "PRINT" : p.form === "Photography" || p.form === "Painting" || p.form === "Postcards" ? "IMAGE" : "TEXT";
+    return { band: art ? art.paper : t.colour, fg: art ? art.red : onColour(t.colour), ink: art ? art.red : INK,
+      kind: `${kind} · ${p.form.toUpperCase()}`, title: p.en[0].toUpperCase(), where: `VOL. ${t.vol.n} · SIDE ${t.side} · ${tag(t)}`,
+      titleAr: p.ar?.[0] ?? null, hand: list(names(p)), from: `On “${t.name}” · ${p.ar ? "also in Arabic" : "in English"}` };
+  }
+  // The title's layout, shared by the face and by the foil masks: English in
+  // Instrument Serif caps, the Arabic title under it when the piece has one,
+  // both kept clear of the reel rings.
+  function titleLayout(g, L, top, tight) {
+    const ar = L.titleAr;
+    let size = ar ? (tight ? 72 : 80) : (tight ? 84 : 96);
+    g.font = `400 ${size}px "Instrument Serif"`;
+    let lines = wrapLines(g, L.title, 1320);
+    if (lines.length > 1 && ar) { size = 44; g.font = `400 ${size}px "Instrument Serif"`; lines = wrapLines(g, L.title, 1320).slice(0, 2); }
+    else if (lines.length > 2) { size = 66; g.font = `400 ${size}px "Instrument Serif"`; lines = wrapLines(g, L.title, 1320).slice(0, 2); }
+    let y0, arSize = 0, arY = 0;
+    if (ar) { y0 = top + (lines.length > 1 ? 132 : tight ? 128 : 152); arSize = tight ? 44 : 50; fitFont(g, ar, '400 {}px "IBM Plex Sans Arabic"', arSize, tight ? 440 : 520, 28); arSize = parseInt(g.font); arY = top + (lines.length > 1 ? 222 : tight ? 184 : 214); }
+    else y0 = top + (tight ? (lines.length > 1 ? 118 : 150) : (lines.length > 1 ? 150 : 180));
+    return { lines, size, y0, ar, arSize, arY };
+  }
+  function drawTitle(g, lay, colour) {
+    g.fillStyle = colour; g.textAlign = "center"; g.textBaseline = "alphabetic";
+    g.font = `400 ${lay.size}px "Instrument Serif"`;
+    lay.lines.forEach((l, i) => g.fillText(l, FACE_W / 2, lay.y0 + i * lay.size * 0.92));
+    if (lay.ar) { g.save(); g.direction = "rtl"; g.font = `400 ${lay.arSize}px "IBM Plex Sans Arabic"`; g.fillText(lay.ar, FACE_W / 2, lay.arY); g.restore(); }
+  }
+  // The label, as a cassette label is: a colour band with the title and
+  // the reel windows, a cream write-on strip in brown ink, on a dark
+  // moulded shell with its tape path at the foot.
+  const SHELL = "#2a2522", LBL = { x: 60, y: 50, w: 1480, h: 740, split: 560 };
+  const SLOT = { w: 300, h: 36 };
+  function cassetteFace(t, p) {
+    const c = document.createElement("canvas"); c.width = FACE_W; c.height = FACE_H;
+    const g = c.getContext("2d");
+    const L = labelOf(t, p);
+    g.fillStyle = SHELL; g.fillRect(0, 0, FACE_W, FACE_H); grain(g, FACE_W, FACE_H, 0.1);
+    // The tape path at the foot: the head's opening, the drive holes, a lighter moulded plate.
+    g.fillStyle = "#3a3430"; g.beginPath(); g.moveTo(300, FACE_H); g.lineTo(390, 880); g.lineTo(1210, 880); g.lineTo(1300, FACE_H); g.closePath(); g.fill();
+    g.fillStyle = "#15120f"; rr(g, 700, 905, 200, 60, 8); g.fill();
+    [faceX(-0.15), faceX(0.15)].forEach((x) => { rr(g, x - 24, faceY(-0.231) - 24, 48, 48, 6); g.fill(); });
+    g.strokeStyle = "rgba(255,255,255,.1)"; g.lineWidth = 2; g.beginPath(); g.moveTo(60, 835); g.lineTo(1540, 835); g.stroke();
+    // The shell's moulded edge: light along the top and left, dark below.
+    g.strokeStyle = "rgba(255,255,255,.2)"; g.lineWidth = 6; g.beginPath(); g.moveTo(8, FACE_H - 8); g.lineTo(8, 8); g.lineTo(FACE_W - 8, 8); g.stroke();
+    g.strokeStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.moveTo(FACE_W - 8, 8); g.lineTo(FACE_W - 8, FACE_H - 8); g.lineTo(8, FACE_H - 8); g.stroke();
+    // The paper label, stuck on: a band in the tape's colour, a cream strip.
+    g.fillStyle = "rgba(0,0,0,.35)"; g.fillRect(LBL.x + 5, LBL.y + 7, LBL.w, LBL.h);
+    g.fillStyle = L.band; g.fillRect(LBL.x, LBL.y, LBL.w, LBL.split - LBL.y);
+    g.fillStyle = CREAM; g.fillRect(LBL.x, LBL.split, LBL.w, LBL.y + LBL.h - LBL.split);
+    if (t.art) {
+      // The poster's figures run along the top of the band, as on the J-card.
+      const img = posterImgs[t.art.poster];
+      if (img) cover(g, img, img.width * 0.12, img.height * 0.3, img.width * 0.84, img.height * 0.07, LBL.x, LBL.y, LBL.w, 50);
+      g.fillStyle = t.art.red; g.fillRect(LBL.x, LBL.y + 50, LBL.w, 4);
+    }
+    // The side's letter, large and faint behind the band, as the J-card has it.
+    g.save(); g.beginPath(); g.rect(LBL.x, LBL.y, LBL.w, LBL.split - LBL.y); g.clip();
+    g.globalAlpha = t.art ? 0.07 : 0.12; g.fillStyle = L.fg; g.font = '400 720px "Instrument Serif"'; g.textAlign = "right"; g.textBaseline = "alphabetic"; g.fillText(t.side, 1500, 610); g.restore();
+    grain(g, FACE_W, FACE_H, 0.06);
+    const sheen = g.createLinearGradient(0, 0, FACE_W, FACE_H); sheen.addColorStop(0, "rgba(255,255,255,.1)"); sheen.addColorStop(0.5, "rgba(255,255,255,0)"); sheen.addColorStop(1, "rgba(0,0,0,.08)");
+    g.fillStyle = sheen; g.fillRect(LBL.x, LBL.y, LBL.w, LBL.h);
+    g.strokeStyle = "rgba(0,0,0,.18)"; g.lineWidth = 2; g.strokeRect(LBL.x + 1, LBL.y + 1, LBL.w - 2, LBL.h - 2);
+    // The band: where it is, what it is, a dashed rule, the title.
+    const top = LBL.y + (t.art ? 54 : 0);
+    g.fillStyle = L.fg; g.textBaseline = "alphabetic"; g.font = '500 25px "IBM Plex Mono"'; spacing(g, 4);
+    g.textAlign = "left"; g.fillText(L.where, 110, top + 58); g.textAlign = "right"; g.fillText(L.kind, 1490, top + 58); spacing(g, 0);
+    g.save(); g.strokeStyle = L.fg; g.globalAlpha = 0.7; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(110, top + 84); g.lineTo(1490, top + 84); g.stroke(); g.restore();
+    const lay = titleLayout(g, L, top, !!t.art); c.lay = lay;
+    drawTitle(g, lay, L.fg);
+    // The write-on strip: a dashed rule, the side, the maker's name written
+    // on the line by hand, where it is from, the mark.
+    g.fillStyle = L.ink; g.strokeStyle = L.ink;
+    g.save(); g.globalAlpha = 0.8; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(110, LBL.split + 1); g.lineTo(1490, LBL.split + 1); g.stroke(); g.restore();
+    g.textAlign = "left"; g.font = '500 22px "IBM Plex Mono"'; spacing(g, 3); g.fillText(`${t.side} ▸`, 110, LBL.split + 100); spacing(g, 0);
+    g.save(); g.globalAlpha = 0.5; g.lineWidth = 2; g.beginPath(); g.moveTo(186, LBL.split + 110); g.lineTo(1120, LBL.split + 110); g.stroke(); g.restore();
+    fitFont(g, L.hand, 'italic 400 {}px "Instrument Serif"', 52, 900, 30);
+    g.save(); g.translate(198, LBL.split + 102); g.rotate(-0.022); g.fillText(L.hand, 0, 0); g.restore();
+    g.font = '300 26px Inter'; g.fillText(L.from, 110, LBL.split + 164);
+    const mk = lettering(L.ink); if (mk) { const mh = 120, mw = (mk.width / mk.height) * mh; g.drawImage(mk, 1490 - mw, LBL.split + 40, mw, mh); }
+    // Four screws and one at the foot.
+    [[34, 34], [FACE_W - 34, 34], [34, FACE_H - 34], [FACE_W - 34, FACE_H - 34], [FACE_W / 2, FACE_H - 30]].forEach(([x, y]) => {
+      g.fillStyle = "rgba(0,0,0,.5)"; g.beginPath(); g.arc(x, y, 13, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "rgba(255,255,255,.3)"; g.lineWidth = 3; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x + 7, y); g.stroke();
+    });
+    // The windows, cut through: the two reels and the slot where the tape runs between them, each with the storyboard's dashed ring.
+    const sy = faceY(HUB_Y - 0.052);
+    g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
+    [-1, 1].forEach((sx) => { g.beginPath(); g.arc(faceX(sx * HUB_X), faceY(HUB_Y), WIN_R * PX, 0, Math.PI * 2); g.fill(); });
+    rr(g, FACE_W / 2 - SLOT.w / 2, sy - SLOT.h / 2, SLOT.w, SLOT.h, SLOT.h / 2); g.fill();
+    g.globalCompositeOperation = "source-over";
+    g.save(); g.strokeStyle = L.fg; g.globalAlpha = 0.6; g.lineWidth = 3; g.setLineDash([12, 9]);
+    [-1, 1].forEach((sx) => { g.beginPath(); g.arc(faceX(sx * HUB_X), faceY(HUB_Y), WIN_R * PX + 8, 0, Math.PI * 2); g.stroke(); });
+    rr(g, FACE_W / 2 - SLOT.w / 2 - 8, sy - SLOT.h / 2 - 8, SLOT.w + 16, SLOT.h + 16, SLOT.h / 2 + 8); g.stroke(); g.restore();
+    return c;
+  }
+  // Paper is rough, the shell is smooth: a roughness map in the same layout.
+  // Paper is rough, the shell smooth, the title foil: smooth and metal, so it catches the light as the cassette turns.
+  function faceMasks(lay) {
+    const rough = paint(FACE_W / 4, FACE_H / 4, (g, w2, h2) => { g.fillStyle = "rgb(90,90,90)"; g.fillRect(0, 0, w2, h2); g.fillStyle = "rgb(210,210,210)"; g.fillRect(LBL.x / 4, LBL.y / 4, LBL.w / 4, LBL.h / 4); g.scale(0.25, 0.25); drawTitle(g, lay, "rgb(64,64,64)"); }, false);
+    const metal = paint(FACE_W / 4, FACE_H / 4, (g, w2, h2) => { g.fillStyle = "#000"; g.fillRect(0, 0, w2, h2); g.scale(0.25, 0.25); drawTitle(g, lay, "#fff"); }, false);
+    return { rough, metal };
+  }
+  const blank = (v) => paint(4, 4, (g) => { g.fillStyle = v; g.fillRect(0, 0, 4, 4); }, false);
+  const cassette = new THREE.Group(); cassette.matrixAutoUpdate = false; cassette.visible = false; scene.add(cassette);
+  const shellFace = new THREE.MeshPhysicalMaterial({ roughness: 1, roughnessMap: blank("#888"), metalness: 0.6, metalnessMap: blank("#000"), clearcoat: 0.55, clearcoatRoughness: 0.32, alphaTest: 0.5 });
+  const shellEdge = new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#2a2522"), roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.3 });
+  const shell = new THREE.Mesh(new RoundedBoxGeometry(CW, CH, CD, 2, 0.012), [shellEdge, shellEdge, shellEdge, shellEdge, shellFace, shellEdge]);
+  shell.castShadow = true; shell.receiveShadow = true; cassette.add(shell);
+  // Behind the windows: a dark well, the tape packs with their windings,
+  // the tape between them, and the cream hubs with six notches (reel.tsx).
+  const innerTex = paint(640, 400, (g, w2, h2) => { g.fillStyle = "#1a1613"; g.fillRect(0, 0, w2, h2); shade(g, 0, 0, w2, h2, "down", 0.55, 120); shade(g, 0, 0, w2, h2, "up", 0.35, 90); });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.4), new THREE.MeshStandardMaterial({ map: innerTex, roughness: 0.92 })); m.position.set(0, HUB_Y, CD / 2 - 0.085); cassette.add(m); }
+  const packFace = paint(256, 256, (g) => {
+    g.translate(128, 128); g.fillStyle = "#2b1d14"; g.beginPath(); g.arc(0, 0, 128, 0, Math.PI * 2); g.fill();
+    for (let r = 26; r < 128; r += 2.2) { g.strokeStyle = r % 6.6 < 2.2 ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.22)"; g.lineWidth = 1.1; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); }
+    const sh = g.createLinearGradient(-128, -128, 128, 128); sh.addColorStop(0, "rgba(255,255,255,.16)"); sh.addColorStop(0.5, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(0,0,0,.22)"); g.fillStyle = sh; g.fillRect(-128, -128, 256, 256);
+  });
+  const packCap = new THREE.MeshStandardMaterial({ map: packFace, roughness: 0.36, metalness: 0.12 });
+  const packSide = new THREE.MeshStandardMaterial({ color: 0x3d2a1b, roughness: 0.26, metalness: 0.28 });
+  const packGeo = new THREE.CylinderGeometry(1, 1, 1, 72);
+  { const m = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.024, 0.006), new THREE.MeshStandardMaterial({ color: 0x4a3222, roughness: 0.2, metalness: 0.3 })); m.position.set(0, HUB_Y - 0.052, CD / 2 - 0.045); cassette.add(m); }
+  const hubGeo = (() => {
+    const s = new THREE.Shape(); const R = HUB_R, Rn = R * 0.72, step = Math.PI / 3, phi = 0.15;
+    for (let i = 0; i < 6; i++) { const a = i * step; s.absarc(0, 0, R, a + phi, a + step - phi, false); s.absarc(0, 0, Rn, a + step - phi, a + step + phi, false); }
+    s.closePath();
+    const hole = new THREE.Path(); hole.absarc(0, 0, R * 0.24, 0, Math.PI * 2, true); s.holes.push(hole);
+    return new THREE.ExtrudeGeometry(s, { depth: 0.014, bevelEnabled: true, bevelThickness: 0.0025, bevelSize: 0.002, bevelSegments: 2, curveSegments: 18 });
+  })();
+  const hubMat = plain(CREAM, { roughness: 0.58, bumpScale: 0.04 });
+  const ringMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(INK), roughness: 0.6, transparent: true, opacity: 0.5 });
+  const ringGeo = new THREE.RingGeometry(HUB_R * 0.4, HUB_R * 0.46, 36);
+  const reels = [-1, 1].map((sx, i) => {
+    const grp = new THREE.Group(); grp.position.set(sx * HUB_X, HUB_Y, 0); cassette.add(grp);
+    const r = i ? 0.105 : 0.17;
+    const pack = new THREE.Mesh(packGeo, [packSide, packCap, packCap]); pack.rotation.x = Math.PI / 2; pack.scale.set(r, 0.05, r); pack.position.z = CD / 2 - 0.047; grp.add(pack);
+    const hub = new THREE.Mesh(hubGeo, hubMat); hub.position.z = CD / 2 - 0.022; grp.add(hub);
+    const ring = new THREE.Mesh(ringGeo, ringMat); ring.position.z = CD / 2 - 0.007; grp.add(ring);
+    return grp;
+  });
+  const glassMat = () => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, roughness: 0.04, metalness: 0, clearcoat: 1, depthWrite: false });
+  [-1, 1].forEach((sx) => { const m = new THREE.Mesh(new THREE.CircleGeometry(WIN_R + 0.004, 40), glassMat()); m.position.set(sx * HUB_X, HUB_Y, CD / 2 - 0.003); cassette.add(m); });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(SLOT.w / PX + 0.006, SLOT.h / PX + 0.006), glassMat()); m.position.set(0, HUB_Y - 0.052, CD / 2 - 0.003); cassette.add(m); }
+
+  // The deck, as the storyboard draws it: a light body, square, with a
+  // dashed inner border; the well nearly the whole front; three keys as
+  // tabs on top, Play standing higher; the caption under the door.
+  const BW = 1.28, BH = 0.96, BD = 0.5, OW = 1.08, OH = 0.72, OY = 0.05, WELL = 0.36;
+  const DOOR_W = OW - 0.012, DOOR_H = OH - 0.012, DOOR_D = 0.04, OPEN = 0.5;
+  const deck = new THREE.Group(); deck.visible = false; scene.add(deck);
+  const bodyMat = plain(BODY), tabSide = plain(TAB, { roughness: 0.55 }), wellMat = plain("#2a2521", { roughness: 0.92, bumpScale: 0.04, side: THREE.BackSide });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x8e8a83, metalness: 0.9, roughness: 0.3 });
+  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x3b3835, metalness: 0.7, roughness: 0.5 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x191614, roughness: 0.95 });
+  const KPX = 1000;
+  const bodyFront = plain("#ffffff", { alphaTest: 0.5, map: paint(BW * KPX, BH * KPX, (g, w2, h2) => {
+    g.fillStyle = BODY; g.fillRect(0, 0, w2, h2); grain(g, w2, h2, 0.06);
+    shade(g, 0, 0, w2, h2, "down", 0.05, 120); shade(g, 0, 0, w2, h2, "up", 0.12, 160);
+    dashes(g, 34, 34, w2 - 68, h2 - 68, "rgba(255,255,255,.85)", 2, [9, 7]);
+    // The well, cut through; a shadow line along its top lip.
+    const ox = (BW / 2 - OW / 2) * KPX, oy = (BH / 2 - OY - OH / 2) * KPX;
+    g.fillStyle = "rgba(0,0,0,.28)"; g.fillRect(ox - 3, oy - 3, OW * KPX + 6, OH * KPX + 6);
+    g.fillStyle = "#000"; g.globalCompositeOperation = "destination-out"; g.fillRect(ox, oy, OW * KPX, OH * KPX); g.globalCompositeOperation = "source-over";
+    g.fillStyle = INK; g.font = '300 26px Inter'; spacing(g, 4); g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("EXCLUSIVES FOR CASSETTES", w2 / 2, oy + OH * KPX + 84); spacing(g, 0);
+  }) });
+  const bodyTop = plain("#ffffff", { map: paint(BW * KPX, BD * KPX, (g, w2, h2) => {
+    g.fillStyle = BODY; g.fillRect(0, 0, w2, h2); grain(g, w2, h2, 0.06); shade(g, 0, 0, w2, h2, "up", 0.08, 60);
+    [0.08, 0.3, 0.52].forEach((x) => { g.fillStyle = "rgba(0,0,0,.5)"; g.fillRect((BW / 2 + x - 0.105) * KPX, h2 - 0.17 * KPX, 0.21 * KPX, 0.14 * KPX); });
+  }) });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(BW, BH, BD), [bodyMat, bodyMat, bodyTop, bodyMat, bodyFront, bodyMat]);
+  body.receiveShadow = true; deck.add(body);
+  const well = new THREE.Mesh(new THREE.BoxGeometry(OW, OH, WELL), wellMat); well.position.set(0, OY, BD / 2 - WELL / 2); well.receiveShadow = true; deck.add(well);
+  const FLOOR = BD / 2 - WELL;
+  // The mechanism waiting in the well: two spindles, the capstans, a pinch
+  // roller, the heads and their guides, on a carriage.
+  const cyl = (r, len, x, y, z, mat, seg = 20) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg), mat); m.rotation.x = Math.PI / 2; m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; deck.add(m); return m; };
+  const blk = (w2, h2, d2, x, y, z, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; deck.add(m); return m; };
+  const SEAT = new THREE.Vector3(0, DOOR_H / 2 + 0.01, -DOOR_D - 0.005 - CD / 2);
+  const PIVOT_Y = OY - OH / 2 + 0.006, SY = PIVOT_Y + SEAT.y;
+  blk(0.78, 0.15, 0.02, 0, SY - 0.245, FLOOR + 0.012, darkSteel);
+  const spindles = [-1, 1].map((sx) => cyl(0.012, 0.3, sx * HUB_X, SY + HUB_Y, FLOOR + 0.15, steel, 10));
+  const toothGeo = new THREE.BoxGeometry(0.0045, 0.014, 0.0045);
+  for (const sp3 of spindles) for (let i = 0; i < 3; i++) { const a = (i * Math.PI * 2) / 3; const m = new THREE.Mesh(toothGeo, darkSteel); m.position.set(Math.cos(a) * 0.0085, 0.155, Math.sin(a) * 0.0085); m.rotation.y = -a; sp3.add(m); }
+  [-1, 1].forEach((sx) => cyl(0.007, 0.26, sx * 0.15, SY - 0.231, FLOOR + 0.13, steel, 10));
+  cyl(0.03, 0.1, 0.195, SY - 0.231, FLOOR + 0.05, rubber, 24);
+  blk(0.11, 0.08, 0.09, 0, SY - 0.245, FLOOR + 0.045, steel);
+  blk(0.06, 0.06, 0.08, -0.1, SY - 0.245, FLOOR + 0.04, darkSteel);
+  [-1, 1].forEach((sx) => cyl(0.007, 0.12, sx * 0.3, SY - 0.245, FLOOR + 0.06, steel, 10));
+  // The keys: white tabs with a dashed border, standing in slots on top.
+  const KEYS = [["EJECT", 0.08, 0.09], ["STOP", 0.3, 0.09], ["PLAY", 0.52, 0.125]];
+  const tabFace = (label, on) => plain("#ffffff", { roughness: 0.5, map: paint(400, 270, (g, w2, h2) => {
+    g.fillStyle = on ? TEAL : TAB; g.fillRect(0, 0, w2, h2); grain(g, w2, h2, 0.05);
+    dashes(g, 14, 14, w2 - 28, h2 - 28, on ? "rgba(255,255,255,.7)" : "rgba(72,56,42,.55)", 3, [10, 8]);
+    g.fillStyle = on ? "#ffffff" : INK; g.font = '500 54px Inter'; spacing(g, 3); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, w2 / 2, 72); spacing(g, 0);
+  }) });
+  // Tall enough to stand in its slot, short enough that Play, pressed, stops
+  // above the well's lip instead of poking into it; pressed, it sits a little
+  // lower than its neighbours.
+  const KH = 0.135, TRAVEL = 0.05;
+  const keyGeo = new THREE.BoxGeometry(0.2, KH, 0.13);
+  const keys = KEYS.map(([label, x, up]) => {
+    const front = tabFace(label, false);
+    const m = new THREE.Mesh(keyGeo, [tabSide, tabSide, tabSide, tabSide, front, tabSide]);
+    m.position.set(x, BH / 2 + up - KH / 2, BD / 2 - 0.1); m.castShadow = true; deck.add(m);
+    return { m, front, up, label };
+  });
+  const playKey = keys[2], playOff = playKey.front, playOn = tabFace("PLAY", true);
+  // The door: a light frame around a glass window the size of the cassette,
+  // hinged at its foot, tilting out toward the viewer.
+  const pivot = new THREE.Group(); pivot.position.set(0, PIVOT_Y, BD / 2); deck.add(pivot);
+  const DPX = 1500;
+  const doorFace = plain("#ffffff", { roughness: 0.6, alphaTest: 0.5, map: paint(DOOR_W * DPX, DOOR_H * DPX, (g, w2, h2) => {
+    g.fillStyle = TAB; g.fillRect(0, 0, w2, h2); grain(g, w2, h2, 0.05);
+    const ww = 0.985 * DPX, wh = 0.628 * DPX, wx = (w2 - ww) / 2, wy = (DOOR_H - SEAT.y) * DPX - wh / 2;
+    dashes(g, wx - 14, wy - 14, ww + 28, wh + 28, "rgba(72,56,42,.5)", 2, [10, 8]);
+    g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+    g.fillStyle = "#000"; g.globalCompositeOperation = "destination-out"; g.fillRect(wx, wy, ww, wh); g.globalCompositeOperation = "source-over";
+  }) });
+  const door = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, DOOR_H, DOOR_D), [tabSide, tabSide, tabSide, tabSide, doorFace, tabSide]);
+  door.position.set(0, DOOR_H / 2, -DOOR_D / 2); door.castShadow = true; door.receiveShadow = true; pivot.add(door);
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.985, 0.628), glassMat()); m.position.set(0, SEAT.y, -0.004); pivot.add(m); }
+  // The holder's lip, so the cassette has something to slide into.
+  { const m = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, 0.03, CD + 0.02), tabSide); m.position.set(0, SEAT.y - CH / 2 - 0.02, -DOOR_D - 0.005 - CD / 2); m.castShadow = true; pivot.add(m); }
+  // "Press" and "Play" either side of the shut deck: the beat before the key.
+  const pressEl = $("#press");
+  // A tight shadow on the deck while a play runs; the shelf stays cheap.
+  key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.9;
+  const keyDir = key.position.clone().normalize(), playDir = new THREE.Vector3(-0.55, 0.62, 0.56).normalize(), dirNow = new THREE.Vector3();
+  function lightMood(f) { dirNow.lerpVectors(keyDir, playDir, f).normalize(); key.intensity = 1.6 + 0.5 * f; hemi.intensity = 0.85 - 0.3 * f; scene.environmentIntensity = 0.5 - 0.2 * f; }
+  // The shadow map stays compiled in but frozen: nothing on the shelf
+  // receives it, and it is only redrawn while a play runs.
+  key.castShadow = true; renderer.shadowMap.enabled = true; renderer.shadowMap.autoUpdate = false;
+  lightMood(0);
+  function lightDeck(on, c) {
+    if (!on) { key.position.set(-400, 700, 1000); key.target.position.set(0, 0, 0); key.target.updateMatrixWorld(); return; }
+    const sc = key.shadow.camera; sc.left = -0.95 * c; sc.right = 0.95 * c; sc.top = 0.85 * c; sc.bottom = -0.75 * c; sc.near = 0.5 * c; sc.far = 6 * c; sc.updateProjectionMatrix();
+  }
+  function aimLight() { key.position.copy(deck.position).addScaledVector(dirNow, 3 * deck.scale.x); key.target.position.copy(deck.position); key.target.updateMatrixWorld(); }
+  scene.add(key.target);
+
+  // The case while it opens: a tray with the spine wall, and a lid on a
+  // hinge at the spine, in the tape's own materials. Unit-cube space, the
+  // shelf mesh's: x along the spine, y through the thickness, z up.
+  const caseRig = new THREE.Group(); caseRig.visible = false; scene.add(caseRig);
+  const lidPivot = new THREE.Group(); lidPivot.position.set(0, 0.3, 0.42); caseRig.add(lidPivot);
+  const trayBack = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 1)); trayBack.position.set(0, -0.4, 0); caseRig.add(trayBack);
+  const spineWall = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 0.08)); spineWall.position.set(0, -0.1, 0.46); caseRig.add(spineWall);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 1)); lid.position.set(0, 0.1, -0.42); lidPivot.add(lid);
+  for (const m of [trayBack, spineWall, lid]) { m.castShadow = true; m.receiveShadow = true; }
+
+  // The timeline, in seconds. The insertion is the heart of it: the
+  // cassette arrives lined up with the tilted door, slows as it meets the
+  // guides, slides down with friction, is pushed the last few millimetres,
+  // clicks and springs back; the door is pushed shut, stops softly, settles
+  // and clunks, and the body recoils a hair.
+  const T = {
+    present: [0, 0.45], lid: [0.3, 0.75], lift: [0.62, 1.05], fall: [0.95, 1.5],
+    rise: [0.55, 1.2], open: [1.0, 1.35], near: [1.55, 2.3],
+    fly: [1.0, 1.56], slide: [1.48, 1.98], push: [2.04, 2.14], click: 2.14,
+    shut: [2.34, 2.58], clunk: 2.58, pull: [2.55, 3.0], press: 2.64,
+    key: [2.98, 3.08], zoom: [3.22, 4.0], paper: [3.5, 3.85], blend: [3.74, 4.0], end: 4.0,
+  };
+  const seg = (t, a2, b2) => clamp((t - a2) / (b2 - a2), 0, 1);
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3), easeIn = (x) => x * x * x, easeInQ = (x) => x * x;
+  const slow = (x) => 1 - Math.pow(1 - x, 4);
+  const backOut = (x) => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
+  const damp = (tau, amp, k, wv) => (tau < 0 ? 0 : amp * Math.exp(-tau * k) * Math.sin(tau * wv));
+  const qInCase = new THREE.Quaternion().setFromAxisAngle(X, -Math.PI / 2), qLift = new THREE.Quaternion();
+  const qPresent = new THREE.Quaternion(), qTilt = new THREE.Quaternion();
+  const cp = new THREE.Vector3(), cq = new THREE.Quaternion(), cs = new THREE.Vector3();
+  const ep = new THREE.Vector3(), eq = new THREE.Quaternion(), es = new THREE.Vector3();
+  const sp = new THREE.Vector3(), sq = new THREE.Quaternion(), ss = new THREE.Vector3();
+  const loc = new THREE.Matrix4(), mtx = new THREE.Matrix4(), one = new THREE.Vector3(1, 1, 1), qId = new THREE.Quaternion();
+  const look = new THREE.Vector3(), winC = new THREE.Vector3(), winN = new THREE.Vector3(), wcorner = new THREE.Vector3();
+  const loc2 = new THREE.Matrix4();
+  // The cassette in the holder reads the door a beat late (follow-through by delay), so it has a little play as the door shuts.
+  const atPivot = (y, out, lag = 0) => out.multiplyMatrices(pivot.matrixWorld, loc.makeRotationX(lag)).multiply(loc2.compose(cp.set(SEAT.x, y, SEAT.z), qId, one));
+  const doorAngle = (t) => OPEN * easeOut(seg(t, ...T.open)) * (1 - ease(seg(t, ...T.shut))) + damp(t - T.clunk, 0.04, 16, 38);
+  let camZ = 0;
+  function layoutPlay() {
+    const m = mobile();
+    const c = m ? Math.min(W * 0.55, H * 0.28) : Math.min(360, H * 0.4);
+    // On a phone the case sits low enough that the cassette, lifted, stays
+    // clear of the header.
+    return { c, m, deckX: 0, deckY: m ? -0.08 * H : -0.04 * H, caseH: m ? 0.24 * H : 0.34 * H, hover: m ? 0.55 : 0.75,
+      caseAt: new THREE.Vector3(m ? 0.12 * W : -0.27 * W, m ? 0.19 * H : 0.08 * H, 40) };
+  }
+  // The cassette in its case, lifted out by `lift` (in case widths).
+  function inCase(g, lift, out) {
+    const s = g.scale.x * w;
+    out.compose(g.position, g.quaternion, cs.setScalar(s));
+    qLift.setFromAxisAngle(Z, -0.28 * lift).multiply(qInCase);
+    return out.multiply(loc.compose(cp.set(-0.06 * lift, lift * 0.42, 0), qLift, cs.setScalar(100 / 110)));
+  }
+  function applyCase(g, t) {
+    const { start, L } = play, u = g.userData;
+    const a2 = ease(seg(t, ...T.present)), b2 = easeIn(seg(t, ...T.fall));
+    qPresent.setFromAxisAngle(Y, 0.14 + 0.3 * ease(seg(t, T.lid[0], T.lid[1] + 0.1))).multiply(UPRIGHT);
+    g.position.lerpVectors(start.p, L.caseAt, a2);
+    g.quaternion.slerpQuaternions(start.q, qPresent, a2);
+    g.scale.setScalar(start.s + (L.caseH / w - start.s) * a2);
+    if (a2 > 0) g.quaternion.premultiply(qTilt.setFromAxisAngle(Y, Math.sin(t * 2.1) * 0.012 * a2));
+    if (b2 > 0) {
+      g.position.z -= b2 * 560; g.position.y -= b2 * 0.1 * H;
+      g.quaternion.premultiply(qTilt.setFromAxisAngle(X, -b2 * 0.35));
+      for (const m of fadeMats) m.opacity = 1 - b2;
+    }
+    const rig = t >= T.lid[0] - 0.04 && b2 < 0.995;
+    u.mesh.visible = !rig && b2 < 0.995; caseRig.visible = rig;
+    if (rig) {
+      const s = g.scale.x * w;
+      caseRig.position.copy(g.position); caseRig.quaternion.copy(g.quaternion); caseRig.scale.set(s, s * (17 / 110), s * (70 / 110));
+      lidPivot.rotation.x = 2.2 * ease(seg(t, ...T.lid)) + damp(t - T.lid[1], 0.07, 12, 28);
+    }
+  }
+  const once = (name, at, t, fn) => { if (t >= at && !play.fired.has(name)) { play.fired.add(name); fn(); } };
+  // Where the door's window sits on screen, for the page to grow out of.
+  function windowRect(out) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < 4; i++) {
+      wcorner.set(i & 1 ? 0.4925 : -0.4925, SEAT.y + (i & 2 ? 0.314 : -0.314), 0).applyMatrix4(pivot.matrixWorld).project(camera);
+      const x = ((wcorner.x + 1) / 2) * W, y = ((1 - wcorner.y) / 2) * H;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    out.x0 = x0; out.y0 = y0; out.x1 = x1; out.y1 = y1; return out;
+  }
+  const rect = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  function placePaper(t) {
+    const b2 = ease(seg(t, ...T.blend));
+    windowRect(rect);
+    const x0 = rect.x0 * (1 - b2), y0 = rect.y0 * (1 - b2), x1 = rect.x1 + (W - rect.x1) * b2, y1 = rect.y1 + (H - rect.y1) * b2;
+    const s = Math.min(1.2, (x1 - x0) / W), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const headY = play.headY + (H / 2 - play.headY) * b2;
+    const inset = `inset(${Math.max(0, y0).toFixed(1)}px ${Math.max(0, W - x1).toFixed(1)}px ${Math.max(0, H - y1).toFixed(1)}px ${Math.max(0, x0).toFixed(1)}px)`;
+    wipeEl.style.clipPath = inset; wipeEl.style.setProperty("--ix", inset.slice(6, -1));
+    const op = ease(seg(t, ...T.paper));
+    wipeEl.style.opacity = op; wipeEl.style.setProperty("--rule", (1 - b2) * op);
+    paperEl.style.transform = `translate(${(cx - s * W / 2).toFixed(1)}px, ${(cy - s * headY).toFixed(1)}px) scale(${s.toFixed(4)})`;
+  }
+  function stepPlay(t, dt) {
+    const L = play.L, c = L.c;
+    const rise = easeOut(seg(t, ...T.rise)), zoom = ease(seg(t, ...T.zoom));
+    const tauC = t - T.clunk;
+    deck.position.set(L.deckX, L.deckY - (1 - rise) * H * 1.15, -damp(tauC, 0.014, 18, 40) * c);
+    deck.rotation.set(0.12 + (1 - rise) * 0.4 + damp(tauC, 0.012, 18, 40) + damp(t - T.rise[1], 0.03, 5, 9), -0.08 * (1 - zoom) + damp(t - T.rise[1] - 0.1, 0.02, 4, 7), 0);
+    pivot.rotation.x = doorAngle(t);
+    deck.updateMatrixWorld(true);
+    lightMood(ease(seg(t, 0.05, 0.6))); aimLight(); renderer.shadowMap.needsUpdate = true;
+    // The camera: a slow move in, closer for the insertion, back a little
+    // for the beat, then into the window.
+    const g = tapes[play.k];
+    const nearE = ease(seg(t, ...T.near)), pull = ease(seg(t, ...T.pull));
+    const z = camZ * (1 - 0.1 * ease(seg(t, 0, 1.7)) - (L.m ? 0.1 : 0.14) * nearE + 0.1 * pull);
+    look.set(0, 0, 0).lerp(sp.set(L.deckX, deck.position.y + OY * c, 0), ease(seg(t, 0.5, 1.6)));
+    camera.position.set(Math.sin(t * 0.8) * 0.004 * W, Math.sin(t * 1.1 + 1) * 0.003 * H, z);
+    if (zoom > 0) {
+      winC.set(0, SEAT.y, 0).applyMatrix4(pivot.matrixWorld);
+      winN.set(0, 0, 1).transformDirection(pivot.matrixWorld);
+      const tanV = Math.tan((FOV * Math.PI) / 360), d = Math.max((0.314 * c) / tanV, (0.4925 * c) / (tanV * (W / H)));
+      camera.position.lerp(sp.copy(winC).addScaledVector(winN, d), zoom);
+      look.lerp(winC, zoom);
+    }
+    camera.lookAt(look); camera.updateMatrixWorld();
+    // The cassette: in the case, lifted, flown to the door, slid in,
+    // pushed home, then carried onto the spindles by the door.
+    cassette.visible = t >= T.lift[0] - 0.2;
+    if (t < T.fly[0]) {
+      inCase(g, easeOut(seg(t, ...T.lift)), mtx);
+    } else if (t < T.slide[0]) {
+      const f = slow(seg(t, ...T.fly));
+      inCase(g, 1, mtx).decompose(sp, sq, ss);
+      atPivot(SEAT.y + L.hover, mtx).decompose(ep, eq, es);
+      cp.lerpVectors(sp, ep, f); cp.y += Math.sin(Math.PI * f) * 0.06 * H; cq.slerpQuaternions(sq, eq, ease(seg(t, T.fly[0], T.fly[1] - 0.2)));
+      mtx.compose(cp, cq, cs.setScalar(ss.x + (es.x - ss.x) * f));
+    } else {
+      let y;
+      if (t < T.push[0]) y = SEAT.y + 0.03 + (L.hover - 0.03) * (1 - ease(seg(t, ...T.slide)));
+      else if (t < T.click) y = SEAT.y + 0.03 * (1 - ease(seg(t, ...T.push)));
+      else y = SEAT.y + damp(t - T.click, 0.008, 22, 50);
+      atPivot(y, mtx, 0.3 * (doorAngle(t - 0.09) - doorAngle(t)));
+    }
+    cassette.matrix.copy(mtx); cassette.matrixWorldNeedsUpdate = true;
+    // Play goes down and stays; the reels and spindles spin up.
+    const kp = easeOut(seg(t, ...T.key));
+    playKey.m.position.y = BH / 2 + playKey.up - KH / 2 - TRAVEL * kp + damp(t - T.key[1], 0.006, 20, 45);
+    playKey.m.material[4] = kp > 0.6 ? playOn : playOff;
+    if (t > T.key[1]) {
+      const sp2 = 1 - Math.exp(-(t - T.key[1]) / 0.16);
+      const tau = t - T.key[1], judder = 1 + 0.3 * Math.exp(-tau * 7) * Math.sin(tau * 42);
+      play.reel[0] -= dt * sp2 * judder * 5.6; play.reel[1] -= dt * sp2 * judder * 9;
+    }
+    const jog = damp(t - T.click, 0.11, 12, 26) + damp(t - T.clunk, 0.05, 14, 30);
+    reels[0].rotation.z = play.reel[0] + jog; reels[1].rotation.z = play.reel[1] - jog;
+    spindles[0].rotation.y = play.reel[0]; spindles[1].rotation.y = play.reel[1];
+    if (t >= T.paper[0] - 0.05) placePaper(t);
+    once("lid", T.lid[0] + 0.12, t, () => knock({ f: 1500, q: 1.2, dur: 0.03, gain: 0.08 }));
+    once("open", T.open[0], t, () => knock({ f: 900, q: 1, dur: 0.05, gain: 0.1 }));
+    once("click", T.click, t, () => knock({ f: 3200, q: 1.2, dur: 0.03, gain: 0.14 }));
+    once("clunk", T.clunk, t, () => knock({ f: 420, q: 0.8, dur: 0.1, gain: 0.32, tone: 110, toneDur: 0.12 }));
+    once("press", T.press, t, () => pressEl.classList.add("on"));
+    once("key", T.key[0] + 0.03, t, () => { knock({ f: 2000, q: 1.4, dur: 0.035, gain: 0.2, tone: 320, toneDur: 0.05 }); startHum(); });
+    once("paper", T.paper[0] - 0.05, t, () => { wipeEl.classList.add("live"); wipeEl.style.opacity = "0"; wipeEl.hidden = false; });
+    once("unpress", T.zoom[0] + 0.1, t, () => pressEl.classList.remove("on"));
+    if (t >= T.end) finishPlay();
+  }
+  startPlay = (k, slug) => {
+    const g = tapes[k], t = TAPES[k], p = PIECES[slug], u = g.userData;
+    actx();
+    const L = layoutPlay();
+    const edge = u.mesh.material[0], spine = u.mesh.material[4];
+    const inner = plain(t.art ? t.art.paper : deeper(t.colour, 0.8), { roughness: 0.88 });
+    fadeMats = [u.front, u.back, spine, edge, inner]; playingMesh = u.mesh;
+    for (const m of fadeMats) { m.transparent = true; m.opacity = 1; }
+    trayBack.material = [edge, edge, inner, u.back, edge, edge];
+    spineWall.material = [edge, edge, edge, edge, spine, inner];
+    lid.material = [edge, edge, u.front, u.back, edge, edge];
+    const face = cassetteFace(t, p), masks = faceMasks(face.lay);
+    shellFace.map?.dispose(); shellFace.map = tex(face);
+    shellFace.roughnessMap.dispose(); shellFace.roughnessMap = masks.rough; shellFace.metalnessMap.dispose(); shellFace.metalnessMap = masks.metal;
+    shellFace.needsUpdate = true;
+    shellEdge.color.set(SHELL);
+    deck.scale.setScalar(L.c); deck.position.set(L.deckX, L.deckY - H * 1.15, 0); deck.visible = true;
+    pivot.rotation.x = 0; lidPivot.rotation.x = 0;
+    for (const r of reels) r.rotation.z = 0; for (const s of spindles) s.rotation.y = 0;
+    playKey.m.material[4] = playOff;
+    lightDeck(true, L.c);
+    // The page's own header, ready behind the glass.
+    const lang = p.ar ? readLang : "en";
+    wipeEl.style.setProperty("--vol", t.art ? t.art.red : t.colour); wipeEl.style.setProperty("--vol-text", t.art ? "#c42437" : t.colour);
+    paperEl.replaceChildren(...readerHead(t, p, lang));
+    wipeEl.classList.add("live"); wipeEl.style.opacity = "0"; wipeEl.style.clipPath = "none"; paperEl.style.transform = "none"; wipeEl.hidden = false;
+    const tr = $(".r-title", paperEl).getBoundingClientRect();
+    wipeEl.hidden = true;
+    play = { k, slug, t0: performance.now(), L, fired: new Set(), reel: [0, 0], headY: tr.top + tr.height / 2, start: { p: g.position.clone(), q: g.quaternion.clone(), s: g.scale.x } };
+    $("#playing-sr").textContent = `Playing ${p.en[0]}. Press Escape to skip.`;
+    document.documentElement.classList.add("playing");
+    kick();
+  };
+  resetPlayer = () => {
+    if (play) { play = null; stopHum(); document.documentElement.classList.remove("playing"); }
+    for (const m of fadeMats) { m.transparent = false; m.opacity = 1; }
+    if (fadeMats.length) { fadeMats.at(-1).dispose(); fadeMats = []; }
+    if (playingMesh) { playingMesh.visible = true; playingMesh = null; }
+    pressEl.classList.remove("on");
+    deck.visible = false; cassette.visible = false; caseRig.visible = false;
+    lightDeck(false); lightMood(0);
+    camera.position.set(0, 0, camZ); camera.rotation.set(0, 0, 0); camera.updateMatrixWorld();
+  };
+
+  let raf = 0, last = 0, nearest = -1, shownNearest = -2;
+  kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(64, last ? now - last : 16.7); last = now;
+    const a = (rate) => (reduce ? 1 : 1 - Math.pow(1 - rate, dt / 16.7));
+    let busy = !!turning;
+    const near = (from, to, rate, eps = 1e-3) => { const d = to - from; if (Math.abs(d) > eps) busy = true; return Math.abs(d) <= eps ? to : from + d * a(rate); };
+    if (opened < 0) stackSmooth = near(stackSmooth, scrollY, 0.14, 0.3);
+    const lean = reduce || opened >= 0 ? 0 : clamp((scrollY - stackSmooth) * 0.0014, -0.3, 0.3);
+    // Packed or spread, two tapes are never closer than a tape is thick at
+    // the stack's tilt, so a pulled-out tape never cuts into its neighbours.
+    const minSpread = Math.min(1, (w * (17 / 110) + 8) / ((mobile() ? 118 : 150) * Math.cos(0.1 + Math.abs(lean))));
+    const spread = reduce ? 1 : Math.max(minSpread, Math.min(1, stackSmooth / (H * 0.35)) * 0.55 + 0.45);
+    const anchor = (centers[0] ?? 0) - stackSmooth;
+    if (opened < 0) {
+      const p = pointer.in && !mobile() ? pick(pointer.x, pointer.y) : -1;
+      hovered = p >= 0 ? p : keyboard ? focused : -1;
+      canvas.style.cursor = hovered >= 0 ? "pointer" : "default";
+    }
+    const r = groundNow.r, gg = groundNow.g, b = groundNow.b;
+    groundNow.lerp(groundTo, a(0.09));
+    if (Math.abs(groundNow.r - r) + Math.abs(groundNow.g - gg) + Math.abs(groundNow.b - b) > 1e-4) busy = true;
+    renderer.setClearColor(groundNow);
+    let best = Infinity;
+    const tp = play ? Math.max(0, (performance.now() - play.t0) / 1000) : 0;
+    tapes.forEach((g, k) => {
+      const u = g.userData;
+      if (play && k === play.k) { applyCase(g, tp); return; }
+      u.open = near(u.open, opened === k ? 1 : 0, 0.075);
+      const gone = opened >= 0 && opened !== k ? 1 : 0;
+      if (opened >= 0) u.side = k < opened ? 1 : -1;
+      u.away = near(u.away, gone, gone ? 0.05 + 0.05 / (1 + Math.abs(k - opened)) : 0.09);
+      u.hover = near(u.hover, hovered === k && opened < 0 ? 1 : 0, 0.16);
+      u.turn = near(u.turn, opened === k ? turnTo : 0, turning ? 0.35 : 0.1);
+      const tx = opened === k && pointer.in && !mobile() ? clamp((pointer.x / W - 0.5) * 2, -1, 1) : 0;
+      const ty = opened === k && pointer.in && !mobile() ? clamp((pointer.y / H - 0.5) * 2, -1, 1) : 0;
+      u.px = near(u.px, tx, 0.06); u.py = near(u.py, ty, 0.06);
+      if (u.hi && opened !== k && u.open < 0.01) sharpen(g, false);
+      const yDom = (centers[k] ?? 0) - stackSmooth;
+      const y = anchor + (yDom - anchor) * spread;
+      const e = ease(u.open);
+      // In the stack: laid flat, spine out. Open: stood up, front on.
+      const sx = u.hover * 40, sy = H / 2 - y + (u.side || -1) * u.away * H * 1.4;
+      const oy = mobile() ? openY - scrollY : openY;
+      g.position.set(sx + (openX - sx) * e, sy + (H / 2 - oy - sy) * e, u.hover * 24);
+      const s = 1 + (openScale - 1) * e;
+      g.scale.setScalar(s);
+      eul.set(0.1 + lean, -u.hover * 0.1, 0); qA.setFromEuler(eul);
+      qB.setFromAxisAngle(Y, 0.5 + u.turn + u.px * 0.18).multiply(UPRIGHT);
+      qT.setFromAxisAngle(X, u.py * 0.08); qB.premultiply(qT);
+      g.quaternion.slerpQuaternions(qA, qB, e);
+      g.visible = u.away < 0.995;
+      const d = Math.abs(y - H / 2);
+      if (d < best) { best = d; nearest = k; }
+    });
+    if (nearest !== shownNearest) { [...ruler.children].forEach((btn, k) => btn.classList.toggle("on", k === nearest)); shownNearest = nearest; }
+    if (play) { stepPlay(tp, dt / 1000); busy = true; }
+    renderer.render(scene, camera);
+    drawRing();
+    if (busy) kick();
+  }
+  addEventListener("scroll", () => { progress(); if (readerEl.hidden) kick(); }, { passive: true });
+  addEventListener("resize", resize);
+  resize();
+  deck.visible = cassette.visible = true; renderer.compile(scene, camera); deck.visible = cassette.visible = false;
+  requestAnimationFrame(() => canvas.classList.add("ready"));
+} else {
+  addEventListener("scroll", progress, { passive: true });
+}
+
+/* --------------------------------------------------------------- routes */
+// #/ the stack · #/01-b4 a tape · #/01-b4/a-horror-tale a piece.
+function parse() {
+  const m = location.hash.match(/^#\/([^/]+)?(?:\/([^/]+))?$/);
+  const k = m && m[1] ? byKey.get(m[1]) ?? -1 : -1;
+  const piece = k >= 0 && m[2] && TAPES[k].slugs.includes(m[2]) ? m[2] : null;
+  return { k, piece };
+}
+// Back goes to the parent view: through history when that is where we came
+// from, otherwise by replacing the address, so it never leaves the site.
+// Each history entry is stamped with its index, and the hash at each index
+// is kept, so Back steps through history only when the entry behind really
+// is the parent (a link to the parent is a new entry, not a step back).
+let pos = -1; const entries = [];
+let stackScroll = 0, tapeScroll = 0, shown = { k: -1, piece: null };
+function parentHash(r) { return r.piece ? `#/${TAPES[r.k].key}` : "#/"; }
+function goUp() {
+  const r = parse(), parent = parentHash(r);
+  if (pos > 0 && entries[pos - 1] === parent) history.back();
+  else { history.replaceState({ i: pos }, "", parent); route(); }
+}
+up.addEventListener("click", (e) => { e.preventDefault(); goUp(); });
+addEventListener("keydown", (e) => {
+  if (play && e.key === "Escape") { e.preventDefault(); finishPlay(); return; }
+  if (e.key !== "Escape" || shown.k < 0) return;
+  if (e.target.closest?.(".pv-stage, .rail-track") && document.querySelector(".pv-stage.zoomed")) return;
+  goUp();
+});
+
+function route() {
+  resetPlayer();
+  const r = parse();
+  const h0 = location.hash || "#/";
+  let i = history.state?.i;
+  if (typeof i !== "number") { entries.length = pos + 1; i = entries.length; entries.push(h0); history.replaceState({ i }, ""); }
+  entries[i] = h0; pos = i;
+  const was = shown;
+  // Leaving the stack: keep its place.
+  if (was.k < 0 && !stackEl.hidden) stackScroll = scrollY;
+  if (was.piece === null && was.k >= 0 && !tapeEl.hidden) tapeScroll = scrollY;
+  shown = r;
+  document.documentElement.classList.toggle("reading", !!r.piece);
+  document.body.classList.toggle("opened", r.k >= 0);
+  up.hidden = r.k < 0 || !!r.piece;
+  if (r.k < 0) {
+    readerEl.hidden = true; tapeEl.hidden = true; stackEl.hidden = false;
+    document.documentElement.style.removeProperty("--ground"); document.documentElement.style.removeProperty("--accent");
+    groundTo.set("#14110f");
+    opened = -1; turnTo = 0;
+    scrollTo(0, stackScroll); stackSmooth = stackScroll;
+    remeasure();
+    if (was.k >= 0) listEl.children[was.k]?.firstChild.focus({ preventScroll: true });
+    kick();
+    return;
+  }
+  const t = TAPES[r.k];
+  document.documentElement.style.setProperty("--ground", t.ground);
+  document.documentElement.style.setProperty("--accent", t.accent);
+  groundTo.set(t.ground);
+  if (opened !== r.k) { opened = r.k; turnTo = 0; if (tapes[r.k]) sharpen(tapes[r.k], true); }
+  stackEl.hidden = true;
+  if (r.piece) {
+    renderReader(t, r.piece);
+    readerEl.classList.toggle("arrive", arrive); arrive = false;
+    readerEl.hidden = false; tapeEl.hidden = true;
+    scrollTo(0, 0); progress();
+    setTimeout(() => $(".r-title", readerEl)?.focus({ preventScroll: true }), 50);
+  } else {
+    readerEl.hidden = true;
+    const fresh = was.k !== r.k || tapeEl.hidden;
+    if (tapeEl.dataset.key !== t.key) { renderTape(t, r.k); tapeEl.dataset.key = t.key; }
+    tapeEl.hidden = false;
+    layoutOpen();
+    scrollTo(0, was.piece && was.k === r.k ? tapeScroll : 0);
+    if (fresh) setTimeout(() => (was.piece ? $(`a[href="#/${t.key}/${was.piece}"]`, tapeEl) : $(".t-title", tapeEl))?.focus({ preventScroll: true }), 420);
+  }
+  kick();
+}
+addEventListener("hashchange", route);
+route();
+</script>
