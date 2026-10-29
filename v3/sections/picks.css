@@ -1,0 +1,118 @@
+/* Editor's Picks: an open cardboard box of tapes, drawn as a dieline (dashed
+   folds, solid cuts) on the white page, with the lid's right flap folded out
+   over the side and printed teal, carrying the label. The 3D cases and reels
+   are drawn by the core's canvas over this drawing, at each slot.
+
+   Everything inside the stage is sized in design units: 1344 wide on desktop,
+   358 wide on the phone. `--k` is one unit in px, set by picks.js from the
+   stage's real width, so the box, the slots and the type scale together.
+   The stage must not create a stacking context: the slots at z-index 2 have
+   to sit above the fixed canvas (z-index 1), which draws the cases. */
+
+.picks { position: relative; padding: clamp(40px, 5vw, 72px) var(--gutter) clamp(56px, 6vw, 96px); background: var(--paper); color: var(--ink); overflow-x: clip; }
+.picks .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.picks-stage { position: relative; width: calc(1344 * var(--k)); height: calc(820 * var(--k)); margin: 0 auto; font-family: var(--font-ui); }
+.picks-stage > * { position: absolute; }
+
+/* The box: an SVG the size of the stage, lines in the site's dashed brown. */
+.picks-box { inset: 0; width: 100%; height: 100%; overflow: visible; }
+.picks-box--m { display: none; }
+.picks-box .fold { fill: none; stroke: var(--brown); stroke-width: 1; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.picks-box .cut { fill: none; stroke: var(--brown); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+.picks-box .face { stroke: none; }
+.picks-box .flap-teal { fill: var(--teal); }
+.picks-box .flap-fold { fill: color-mix(in srgb, var(--teal) 78%, #000); }
+.picks-box .ground { fill: rgba(0, 0, 0, 0.18); filter: blur(calc(6 * var(--k))); }
+
+/* The note inside the lid: the editors' line, on the back flap. */
+.picks-note { left: calc(28 * var(--k)); top: calc(96 * var(--k)); width: calc(1040 * var(--k)); margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: max(18px, calc(30 * var(--k))); line-height: 1.15; color: var(--brown); text-wrap: balance; }
+
+/* The lid flap's print, sheared onto the flap's plane: verticals stay
+   vertical, baselines run down the flap at its 33° slope, as a sign on a
+   receding wall does. */
+.picks-flap { left: calc(1138 * var(--k)); top: calc(252 * var(--k)); width: calc(186 * var(--k)); transform: skewY(33.1deg); transform-origin: 0 0; color: var(--paper); }
+.picks-warp { display: block; width: 100%; height: auto; margin: 0 0 calc(10 * var(--k)); }
+.picks-label { margin: 0; text-align: center; }
+.picks-label > * { display: block; margin: 0; }
+.picks-label .k { font-family: var(--font-mono); font-size: max(8px, calc(10.5 * var(--k))); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.78; }
+.picks-label h2 { font-family: var(--font-display); font-weight: 400; font-size: calc(38 * var(--k)); line-height: 1; letter-spacing: -0.01em; margin-top: calc(14 * var(--k)); white-space: nowrap; }
+.picks-label .c { font-family: var(--font-display); font-style: italic; font-size: calc(23 * var(--k)); line-height: 1.1; margin-top: calc(6 * var(--k)); opacity: 0.92; }
+.picks-label .w { margin-top: calc(14 * var(--k)); padding-top: calc(10 * var(--k)); border-top: 1px dashed rgba(255, 255, 255, 0.55); }
+
+/* The contents stamp on the inner back wall. */
+.picks-stamp { left: calc(262 * var(--k)); top: calc(238 * var(--k)); margin: 0; padding: calc(5 * var(--k)) calc(9 * var(--k)); border: 1px dashed color-mix(in srgb, var(--brown) 60%, transparent); transform: rotate(-1.5deg); transform-origin: 0 100%; font-family: var(--font-mono); font-size: max(8px, calc(10.5 * var(--k))); letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--brown) 72%, transparent); white-space: nowrap; }
+
+/* Shadows under the cases and reels, below the canvas. */
+.picks-shade { inset: 0; }
+.picks-shade i { position: absolute; left: calc(var(--x) * var(--k)); top: calc((var(--y) + var(--h) - 9) * var(--k)); width: calc(var(--w) * var(--k)); height: calc(16 * var(--k)); border-radius: 50%; background: rgba(0, 0, 0, 0.2); filter: blur(calc(4 * var(--k))); }
+.picks-shade i.stand { background: rgba(0, 0, 0, 0.26); }
+.picks-shade i.reel { background: rgba(0, 0, 0, 0.14); }
+
+/* The picks: each a link the size of its case, transparent while the canvas
+   draws the case, above the canvas so it takes the pointer and the keyboard. */
+.picks-list { inset: 0; margin: 0; padding: 0; list-style: none; }
+.picks-list > li { position: absolute; left: calc(var(--x) * var(--k)); top: calc(var(--y) * var(--k)); width: calc(var(--w) * var(--k)); height: calc(var(--h) * var(--k)); z-index: 2; }
+.picks-list > li:hover, .picks-list > li:focus-within { z-index: 3; }
+.slot { position: absolute; inset: 0; display: block; color: transparent; text-decoration: none; outline: none; -webkit-tap-highlight-color: transparent; }
+.slot:focus-visible { outline: 2px solid var(--teal); outline-offset: calc(6 * var(--k)); }
+
+/* The spine, read only without WebGL: the case flat, in its tape's colours. */
+.spine { position: absolute; inset: 0; display: none; }
+.no3d .spine { display: flex; align-items: center; justify-content: center; gap: calc(14 * var(--k)); padding: 0 calc(16 * var(--k)); background: var(--tape); color: var(--on-tape); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22), inset 0 calc(1 * var(--k)) 0 rgba(255, 255, 255, 0.18); overflow: hidden; }
+.no3d .lie .spine { flex-direction: row; }
+.no3d .lie.tilted .spine { align-items: flex-end; padding-bottom: calc(17 * var(--k)); background: linear-gradient(to bottom, var(--tape-top) 0, var(--tape-top) calc(100% - 55 * var(--k)), rgba(0, 0, 0, 0.3) calc(100% - 55 * var(--k)), var(--tape) calc(100% - 53 * var(--k))); }
+.no3d .stand .spine { writing-mode: vertical-rl; transform: rotate(180deg); }
+.spine b { font-family: var(--font-mono); font-weight: 500; font-size: max(7px, calc(10 * var(--k))); letter-spacing: 0.14em; text-transform: uppercase; }
+.spine i { font-family: var(--font-display); font-style: italic; font-size: max(12px, calc(22 * var(--k))); line-height: 1; white-space: nowrap; }
+.no3d .slot:hover .spine, .no3d .slot:focus-visible .spine { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22), inset 0 calc(1 * var(--k)) 0 rgba(255, 255, 255, 0.18), 0 calc(6 * var(--k)) calc(14 * var(--k)) rgba(0, 0, 0, 0.18); }
+
+/* The tag: what is on the tape, shown over it on hover or focus, as the
+   J-card's inside is. Paper, a dashed cut line, the tape's colour as a band. */
+.tag { position: absolute; left: 0; bottom: calc(100% + 10 * var(--k)); width: calc(300 * var(--k)); min-width: 220px; padding: calc(12 * var(--k)) calc(16 * var(--k)) calc(14 * var(--k)); background: var(--paper); color: var(--ink); border: 1px dashed var(--brown); box-shadow: 0 calc(10 * var(--k)) calc(24 * var(--k)) rgba(0, 0, 0, 0.14); opacity: 0; transform: translateY(calc(6 * var(--k))); pointer-events: none; transition: opacity 160ms ease, transform 200ms ease; }
+.tag::before { content: ""; position: absolute; left: -1px; top: -1px; width: calc(100% + 2px); height: calc(5 * var(--k)); background: var(--tape); }
+.tag.right { left: auto; right: 0; }
+.tag.below { bottom: auto; top: calc(100% + 10 * var(--k)); transform: translateY(calc(-6 * var(--k))); }
+.slot:hover .tag, .slot:focus-visible .tag { opacity: 1; transform: none; }
+.tag > * { display: block; margin: 0; }
+.tag small { font-family: var(--font-mono); font-size: max(9px, calc(10 * var(--k))); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brown); }
+.tag strong { font-family: var(--font-display); font-weight: 400; font-size: max(20px, calc(28 * var(--k))); line-height: 1.05; margin-top: calc(6 * var(--k)); letter-spacing: -0.01em; }
+.tag em { font-family: var(--font-display); font-style: italic; font-size: max(14px, calc(17 * var(--k))); color: var(--brown); margin-top: calc(2 * var(--k)); }
+.tag > ol { list-style: none; padding: 0; margin-top: calc(12 * var(--k)); border-top: 1px dashed color-mix(in srgb, var(--brown) 60%, transparent); }
+.tag > ol > li { display: grid; grid-template-columns: calc(18 * var(--k)) 1fr auto; align-items: baseline; gap: calc(8 * var(--k)); padding: calc(6 * var(--k)) 0 0; font-size: max(12px, calc(14 * var(--k))); font-weight: 400; line-height: 1.3; }
+.tag > ol > li span:first-child { font-family: var(--font-mono); font-size: max(8px, calc(9 * var(--k))); color: var(--brown); }
+.tag > ol > li span:last-child { font-family: var(--font-mono); font-size: max(8px, calc(9 * var(--k))); letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); }
+
+/* Loose reels: decorative anchors the canvas draws spools in. */
+.picks-reels { inset: 0; }
+.picks-reels i { position: absolute; left: calc(var(--x) * var(--k)); top: calc(var(--y) * var(--k)); width: calc(var(--w) * var(--k)); height: calc(var(--w) * var(--k)); border-radius: 50%; }
+.no3d .picks-reels i { background: radial-gradient(circle, var(--teal) 0 24%, var(--paper) 24% 31%, var(--brown) 31% 94%, transparent 95%); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.no3d .picks-reels i::after { content: ""; position: absolute; inset: 29%; border-radius: 50%; border: 1px dashed rgba(255, 255, 255, 0.5); }
+
+/* The front lip of the box: a low wall in front of the cases, so they sit
+   inside it. Above the canvas, so it covers their feet. */
+.picks-lip { left: calc(230 * var(--k)); top: calc(788 * var(--k)); width: calc(1114 * var(--k)); height: calc(14 * var(--k)); z-index: 2; pointer-events: none; background: color-mix(in srgb, var(--paper-grey) 42%, var(--paper)); border-top: 1px dashed var(--brown); border-bottom: 1px solid var(--brown); }
+
+@media (max-width: 760px) {
+  .picks-stage { height: calc(700 * var(--k)); }
+  .picks-box--d { display: none; }
+  .picks-box--m { display: block; }
+  .picks-list li, .picks-shade i, .picks-reels i { left: calc(var(--mx) * var(--k)); top: calc(var(--my) * var(--k)); width: calc(var(--mw) * var(--k)); height: calc(var(--mh) * var(--k)); }
+  .picks-shade i { top: calc((var(--my) + var(--mh) - 7) * var(--k)); height: calc(12 * var(--k)); }
+  .picks-reels i { height: calc(var(--mw) * var(--k)); }
+  .picks-reels .d-only, .picks-shade .d-only { display: none; }
+  .picks-note { left: calc(16 * var(--k)); top: calc(14 * var(--k)); width: calc(326 * var(--k)); font-size: max(16px, calc(19 * var(--k))); }
+  .picks-flap { left: calc(24 * var(--k)); top: calc(118 * var(--k)); width: calc(310 * var(--k)); transform: none; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: calc(12 * var(--k)); }
+  .picks-warp { margin: 0; }
+  .picks-label h2 { font-size: calc(30 * var(--k)); }
+  .picks-label .c { font-size: calc(18 * var(--k)); }
+  .picks-label .w { margin-top: calc(8 * var(--k)); padding-top: calc(6 * var(--k)); }
+  .picks-stamp { left: calc(12 * var(--k)); top: calc(262 * var(--k)); }
+  .picks-lip { left: 0; top: calc(686 * var(--k)); width: 100%; }
+  .tag { width: min(calc(300 * var(--k)), 86vw); }
+  .no3d .lie.tilted .spine { align-items: center; padding-bottom: 0; background: var(--tape); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag { transition: none; }
+}

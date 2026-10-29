@@ -1,0 +1,302 @@
+/* Extended Play, with Bonus Tracks as its closer.
+   The wireframe (HOMEPAGE 591:1114, 1440 wide): a light-grey box
+   36–1405 × 2066–2569; "Extended Play" (Instrument Serif, 82px caps) sits
+   on its top edge at x 234; cases 393 tall stand inside; two teal hubs are
+   the arrows; "Bonus Tracks" lies upside down across its bottom-right edge.
+   Everything scales from --len, the length of one case (393px at 1440). */
+
+@property --ep-nudge { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+
+.ep {
+  --len: clamp(17.5rem, 27.3vw, 24.5rem);
+  --display: clamp(3rem, 1.15rem + 4.4vw, 5.125rem);
+  --inset: max(16px, 2.5vw);
+  --hub: max(44px, calc(var(--len) * 0.176));
+  position: relative;
+  padding: clamp(48px, 6vw, 88px) var(--inset) clamp(120px, 13vw, 190px);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* The two titles: caps only, trimmed to the cap height so they sit on the
+   box's edges exactly. */
+.ep-title,
+.ep-bonus {
+  margin: 0;
+  font: 400 var(--display) / 1 var(--font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-box: trim-both cap alphabetic;
+  color: var(--brown);
+  white-space: nowrap;
+}
+.ep-title {
+  position: relative;
+  z-index: 2;
+  width: fit-content;
+  /* The baseline is 16px into the box at 1440: about a quarter of the caps. */
+  margin: 0 0 -0.195em calc(var(--len) * 0.5);
+}
+
+/* The box. Static, so the canvas draws the cases above it. */
+.ep-box {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--hub) minmax(0, 1fr) var(--hub);
+  grid-template-areas: "prev win next" ". cap .";
+  align-items: center;
+  column-gap: calc(var(--len) * 0.04);
+  padding: calc(var(--len) * 0.137) calc(var(--len) * 0.0865) calc(var(--len) * 0.04);
+  background: var(--paper-grey);
+}
+
+/* The hubs: a teal wheel with its centre punched out, as drawn. */
+.ep-hub {
+  position: relative;
+  z-index: 2;
+  width: var(--hub);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ep-hub--prev { grid-area: prev; }
+.ep-hub--next { grid-area: next; }
+.ep-hub img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: rotate(calc(var(--ep-spin, 0deg) + var(--ep-nudge)));
+  pointer-events: none;
+  user-select: none;
+}
+.ep-hub::after {
+  content: "";
+  position: absolute;
+  inset: 13%;
+  border-radius: 50%;
+  background: var(--paper-grey);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .ep-hub:not([aria-disabled="true"]):hover { --ep-nudge: 14deg; }
+  .ep-hub--prev:not([aria-disabled="true"]):hover { --ep-nudge: -14deg; }
+}
+.ep-hub:active:not([aria-disabled="true"]) img { scale: 0.94; }
+.ep-hub[aria-disabled="true"] { cursor: default; }
+.ep-hub[aria-disabled="true"] img { opacity: 0.3; }
+.ep-hub:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+
+/* The window the shelf scrolls in. It clips the cases (data-clip). */
+.ep-window {
+  grid-area: win;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Room for the focus ring above and below the cases. */
+  padding-block: 12px;
+  margin-block: -12px;
+}
+.ep-window::-webkit-scrollbar { display: none; }
+
+.ep-track {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  height: var(--len);
+  margin: 0;
+  padding: 0 calc(var(--len) * 0.036);
+  list-style: none;
+}
+.ep-slot {
+  position: relative;
+  flex: none;
+  width: calc(var(--len) * var(--w));
+  height: var(--len);
+  margin-left: calc(var(--len) * var(--ml, 0));
+  scroll-snap-align: start;
+  scroll-margin-inline: calc(var(--len) * 0.036);
+}
+
+/* The link is the case's box; only its face takes the pointer, so a
+   leaning case answers where it is drawn, not across its whole box. */
+.ep-case {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  outline: none;
+  pointer-events: none;
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.ep-face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--len) * var(--fw));
+  height: var(--len);
+  translate: -50% -50%;
+  rotate: var(--roll, 0rad);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.ep:not(.no3d) .ep-slot.is-out .ep-face { pointer-events: none; }
+/* The page's own focus outline would ring the link's box, not the case. */
+.ep .ep-case:focus-visible { outline: none; }
+
+/* Focus: with WebGL, the teal mark under the case (and the core lifts the
+   case); without it, a ring round the drawn face. */
+.no3d .ep-case:focus-visible .ep-face { outline: 2px solid var(--teal); outline-offset: 5px; }
+.ep-mark {
+  position: absolute;
+  z-index: 2;
+  height: 3px;
+  margin-top: calc(var(--len) * 0.04 + 8px);
+  translate: -50% 0;
+  background: var(--teal);
+  pointer-events: none;
+}
+.no3d .ep-mark { display: none; }
+
+/* No WebGL: the wireframe's white cases, named. */
+.ep-face b, .ep-face small { display: none; }
+.no3d .ep-face {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 12px;
+  overflow: hidden;
+  background: var(--paper);
+  border-top: 6px solid var(--c, var(--teal));
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.08), 0 10px 22px -14px rgb(0 0 0 / 0.35);
+}
+.no3d .ep-face b {
+  display: block;
+  font: 400 clamp(1.125rem, calc(var(--len) * 0.062), 1.5rem) / 1 var(--font-display);
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.no3d .ep-face small {
+  display: block;
+  font: 400 10px / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--brown);
+}
+.no3d .ep-slot--front .ep-face {
+  align-items: flex-start;
+  padding: 16px 14px 14px;
+  border-top-width: 10px;
+}
+.no3d .ep-slot--front .ep-face b { writing-mode: horizontal-tb; white-space: normal; font-size: clamp(1.25rem, calc(var(--len) * 0.07), 1.75rem); line-height: 1.05; }
+.no3d .ep-case:hover .ep-face { translate: -50% calc(-50% - 6px); }
+.no3d .ep-face { transition: translate 180ms ease; }
+
+/* The caption: what the pointer or the focus is on. One line at a fixed
+   height, so the box never changes size as it changes. */
+.ep-caption {
+  grid-area: cap;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  height: 1.75rem;
+  max-width: calc(100% - var(--display) * 4.9);
+  margin: calc(var(--len) * 0.085) 0 0;
+  padding-left: calc(var(--len) * 0.036);
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--brown);
+}
+.ep-cap-where {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 11px / 1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ep-cap-name {
+  flex: none;
+  font: 400 clamp(1.375rem, 1rem + 0.75vw, 1.75rem) / 1 var(--font-display);
+  color: var(--ink);
+}
+.ep-cap-name.is-quiet { font-style: italic; color: var(--brown); }
+
+/* Bonus Tracks: upside down across the box's bottom-right edge, its caps
+   centred on the edge. Once it is fully in view it turns over, the way a
+   tape is flipped to side B: half a turn about each in-plane axis is the
+   same upside-down start as a half turn in the plane, but it tumbles in
+   depth instead of sweeping across the shelf. */
+.ep-bonus {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  transform: translateY(50%) perspective(900px) rotateX(180deg) rotateY(180deg);
+  transition: transform 1000ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.ep-bonus.is-upright { transform: translateY(50%) perspective(900px) rotateX(0deg) rotateY(0deg); }
+
+.ep-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+/* Without cap trimming (Firefox) the line box keeps its leading; the same
+   16px of overlap needs a deeper pull. */
+@supports not (text-box: trim-both cap alphabetic) {
+  .ep-title { margin-bottom: -0.36em; }
+}
+
+/* Where the caption is short of room, the volume's title goes first. */
+@media (max-width: 1279px) { .ep-cap-vol { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-bonus, .ep-bonus.is-upright { transform: translateY(50%); transition: none; }
+  .no3d .ep-face { transition: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ep-hub img { transition: --ep-nudge 260ms cubic-bezier(0.2, 0.7, 0.2, 1), scale 120ms ease; }
+}
+
+/* A phone: the shelf takes the box's width, the hubs drop below it with
+   the caption between them, and the box's foot leaves room for the
+   closer's overhang. */
+@media (max-width: 700px) {
+  .ep { --hub: 48px; }
+  .ep-title { margin-left: 12px; }
+  .ep-box {
+    grid-template-columns: var(--hub) minmax(0, 1fr) var(--hub);
+    grid-template-areas: "win win win" "prev cap next";
+    row-gap: 34px;
+    column-gap: 10px;
+    padding: 38px 12px calc(var(--display) * 0.36 + 18px);
+  }
+  .ep-caption {
+    max-width: none;
+    height: auto;
+    min-height: 2.75rem;
+    margin: 0;
+    padding-left: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+  .ep-cap-where { max-width: 100%; font-size: 10px; line-height: 1.35; letter-spacing: 0.1em; white-space: normal; text-wrap: balance; }
+  .ep-cap-vol { display: none; }
+  .ep-cap-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .ep-cap-name { font-size: 1.25rem; }
+}
