@@ -3,7 +3,10 @@
    36–1405 × 2066–2569; "Extended Play" (Instrument Serif, 82px caps) sits
    on its top edge at x 234; cases 393 tall stand inside; two teal hubs are
    the arrows; "Bonus Tracks" lies upside down across its bottom-right edge.
-   Everything scales from --len, the length of one case (393px at 1440). */
+   Everything scales from --len, the length of one case (393px at 1440).
+   With WebGL the core draws a case about 7% larger than its link (the
+   camera's perspective), so the links use --unit, 0.93 of it, and the
+   drawn cases come out at the wireframe's size. */
 
 @property --ep-nudge { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
 
@@ -12,6 +15,10 @@
   --display: clamp(3rem, 1.15rem + 4.4vw, 5.125rem);
   --inset: max(16px, 2.5vw);
   --hub: max(44px, calc(var(--len) * 0.176));
+  --unit: calc(var(--len) * 0.93);
+  /* Hub to shelf: wider with WebGL, where the perspective pushes the end
+     cases outward. */
+  --ep-gap: calc(var(--len) * 0.13);
   position: relative;
   padding: clamp(48px, 6vw, 88px) var(--inset) clamp(120px, 13vw, 190px);
   background: var(--paper);
@@ -30,6 +37,7 @@
   color: var(--brown);
   white-space: nowrap;
 }
+.ep.no3d { --unit: var(--len); --ep-gap: calc(var(--len) * 0.04); }
 .ep .ep-title {
   position: relative;
   z-index: 2;
@@ -45,7 +53,7 @@
   grid-template-columns: var(--hub) minmax(0, 1fr) var(--hub);
   grid-template-areas: "prev win next" ". cap .";
   align-items: center;
-  column-gap: calc(var(--len) * 0.04);
+  column-gap: var(--ep-gap);
   padding: calc(var(--len) * 0.137) calc(var(--len) * 0.0865) calc(var(--len) * 0.04);
   background: var(--paper-grey);
 }
@@ -100,8 +108,8 @@
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
-  /* Room for the focus ring above and below the cases. */
-  padding-block: 12px;
+  /* The cases centred in the case length, plus room for the focus ring. */
+  padding-block: calc((var(--len) - var(--unit)) / 2 + 12px);
   margin-block: -12px;
 }
 .ep .ep-window::-webkit-scrollbar { display: none; }
@@ -111,19 +119,19 @@
   display: flex;
   align-items: flex-end;
   width: max-content;
-  height: var(--len);
+  height: var(--unit);
   margin: 0;
-  padding: 0 calc(var(--len) * 0.036);
+  padding: 0 calc(var(--unit) * 0.036);
   list-style: none;
 }
 .ep .ep-slot {
   position: relative;
   flex: none;
-  width: calc(var(--len) * var(--w));
-  height: var(--len);
-  margin-left: calc(var(--len) * var(--ml, 0));
+  width: calc(var(--unit) * var(--w));
+  height: var(--unit);
+  margin-left: calc(var(--unit) * var(--ml, 0));
   scroll-snap-align: start;
-  scroll-margin-inline: calc(var(--len) * 0.036);
+  scroll-margin-inline: calc(var(--unit) * 0.036);
 }
 
 /* The link is the case's box; only its face takes the pointer, so a
@@ -143,27 +151,25 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(var(--len) * var(--fw));
-  height: var(--len);
+  width: calc(var(--unit) * var(--fw));
+  height: var(--unit);
   translate: -50% -50%;
   rotate: var(--roll, 0rad);
   pointer-events: auto;
   cursor: pointer;
 }
-.ep:not(.no3d) .ep-slot.is-out .ep-face { pointer-events: none; }
+.ep:not(.no3d) .ep-slot.is-cut .ep-case { display: none; }
 /* The page's own focus outline would ring the link's box, not the case. */
 .ep .ep-case:focus-visible { outline: none; }
 
-/* Focus: with WebGL, the teal mark under the case (and the core lifts the
-   case); without it, a ring round the drawn face. */
+/* Focus: a teal ring round the case as drawn. With WebGL it's placed from
+   the core's projection; without it, it rings the face. */
 .ep.no3d .ep-case:focus-visible .ep-face { outline: 2px solid var(--teal); outline-offset: 5px; }
 .ep .ep-mark {
   position: absolute;
   z-index: 2;
-  height: 3px;
-  margin-top: calc(var(--len) * 0.04 + 8px);
-  translate: -50% 0;
-  background: var(--teal);
+  outline: 2px solid var(--teal);
+  outline-offset: 5px;
   pointer-events: none;
 }
 .ep.no3d .ep-mark { display: none; }
@@ -230,27 +236,27 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+.ep .ep-cap-name:empty { display: none; }
 .ep .ep-cap-name {
   flex: none;
   font: 400 clamp(1.375rem, 1rem + 0.75vw, 1.75rem) / 1 var(--font-display);
   color: var(--ink);
 }
-.ep .ep-cap-name.is-quiet { font-style: italic; color: var(--brown); }
 
 /* Bonus Tracks: upside down across the box's bottom-right edge, its caps
    centred on the edge. Once it is fully in view it turns over, the way a
    tape is flipped to side B: half a turn about each in-plane axis is the
-   same upside-down start as a half turn in the plane, but it tumbles in
-   depth instead of sweeping across the shelf. */
+   same upside-down start as a half turn in the plane, but it turns in
+   depth (edge-on at the midpoint) instead of sweeping across the shelf. */
 .ep .ep-bonus {
   position: absolute;
   right: 0;
   bottom: 0;
   z-index: 2;
-  transform: translateY(50%) perspective(900px) rotateX(180deg) rotateY(180deg);
+  transform: translateY(50%) perspective(900px) rotateY(180deg) rotateX(180deg);
   transition: transform 1000ms cubic-bezier(0.65, 0, 0.35, 1);
 }
-.ep .ep-bonus.is-upright { transform: translateY(50%) perspective(900px) rotateX(0deg) rotateY(0deg); }
+.ep .ep-bonus.is-upright { transform: translateY(50%) perspective(900px) rotateY(0deg) rotateX(0deg); }
 
 .ep .ep-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 
@@ -287,7 +293,7 @@
   .ep .ep-caption {
     max-width: none;
     height: auto;
-    min-height: 2.75rem;
+    min-height: 3.6rem;
     margin: 0;
     padding-left: 0;
     flex-direction: column;

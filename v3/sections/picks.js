@@ -7,34 +7,34 @@
    draws each case at its anchor's box every frame, so moving the anchor
    moves the tape (see sections/CONTRACT.md and picks.css).
 
-   Positions are design units: the desktop stage is 1344 × 770, the phone
+   Positions are design units: the desktop stage is 1344 × 650, the phone
    stage 358 × 700. picks.css turns a unit into px through `--k`. */
 
-const DESK = { w: 1344, h: 770, inner: 1114, floor: 760, ceil: -90, case: [280, 45], stand: [45, 280], turned: [92, 280] };
+const DESK = { w: 1344, h: 650, inner: 1114, floor: 640, ceil: -90, case: [280, 45], stand: [45, 280], turned: [92, 280] };
 const PHONE = { w: 358, h: 700, inner: 358, floor: 686, ceil: -10, case: [250, 40], stand: [40, 250], turned: [40, 250] };
 
 // The picks, bottom of each pile first. `at` is where a case starts, on
 // each stage; it then falls into place. A key the core lacks falls back to
 // the next tape not yet shown.
 const SLOTS = [
-  { key: "01-a1", pose: "lie", at: { d: [26, 700], m: [54, 640] } },
-  { key: "01-b1", pose: "lie", at: { d: [42, 640], m: [54, 594] } },
-  { key: "88-a2", pose: "lie", at: { d: [14, 580], m: [54, 548] } },
-  { key: "01-a2", pose: "lie", at: { d: [52, 520], m: [54, 502] } },
-  { key: "01-b4", pose: "stand", yaw: 0.3, at: { d: [392, 440], m: [6, 400] } },
-  { key: "88-a1", pose: "stand", at: { d: [506, 440], m: [312, 400] } },
-  { key: "01-a3", pose: "lie", at: { d: [690, 700], m: [54, 456] } },
-  { key: "01-b2", pose: "lie", at: { d: [712, 640], m: [54, 410] } },
-  { key: "01-b3", pose: "lie", at: { d: [678, 580], m: [54, 364] } },
+  { key: "01-a1", pose: "lie", tilt: 0.03, roll: 0.012, at: { d: [26, 590], m: [54, 640] } },
+  { key: "01-b1", pose: "lie", tilt: 0.07, roll: -0.018, at: { d: [42, 540], m: [54, 594] } },
+  { key: "88-a2", pose: "lie", tilt: 0.1, roll: 0.01, at: { d: [14, 490], m: [54, 548] } },
+  { key: "01-a2", pose: "lie", tilt: 0.17, roll: -0.025, at: { d: [52, 440], m: [54, 502] } },
+  { key: "01-b4", pose: "stand", yaw: 0.3, at: { d: [392, 350], m: [6, 400] } },
+  { key: "88-a1", pose: "stand", roll: -0.015, at: { d: [506, 350], m: [312, 400] } },
+  { key: "01-a3", pose: "lie", tilt: 0.04, roll: -0.01, at: { d: [690, 590], m: [54, 456] } },
+  { key: "01-b2", pose: "lie", tilt: 0.09, roll: 0.02, at: { d: [712, 540], m: [54, 410] } },
+  { key: "01-b3", pose: "lie", tilt: 0.16, roll: -0.014, at: { d: [678, 490], m: [54, 364] } },
 ];
 // Loose reels: diameter and where they start.
 const REELS = [
-  { d: [330, 690, 50], m: [60, 340, 40] },
-  { d: [388, 718, 26], m: [104, 362, 20] },
-  { d: [600, 690, 50], m: [262, 342, 40] },
-  { d: [654, 720, 24], m: [236, 366, 16] },
-  { d: [1012, 690, 50], m: null },
-  { d: [1068, 722, 24], m: null },
+  { d: [330, 586, 50], m: [60, 340, 40] },
+  { d: [388, 612, 26], m: [104, 362, 20] },
+  { d: [600, 586, 50], m: [262, 342, 40] },
+  { d: [654, 614, 24], m: [236, 366, 16] },
+  { d: [1012, 586, 50], m: null },
+  { d: [1068, 614, 24], m: null },
 ];
 
 const G = 3400, BOUNCE = 0.26, BOUNCE_MIN = 180, FRICTION = 0.55, STILL = 0.22, MAX_V = 2200;
@@ -83,31 +83,31 @@ function desktopBox() {
     grad("picks-g-floor", 0, 1, [[0, 0.5], [1, 0.06]]),
     grad("picks-g-right", 1, 0, [[0, 0.04], [1, 0.24]]),
   ));
-  svg.append(s("rect", { x: 8, y: 754, width: 1330, height: 10, rx: 5, class: "picks-ground" }));
+  svg.append(s("rect", { x: 8, y: 634, width: 1330, height: 10, rx: 5, class: "picks-ground" }));
   // the back flap, standing open; the left flap, lying open
   svg.append(poly([[230, 90], [1344, 90], [1364, 0], [250, 0]], "picks-face picks-paper"));
   svg.append(poly([[230, 90], [1344, 90], [1364, 0], [250, 0]], "picks-cut"));
   svg.append(poly([[0, 190], [230, 90], [10, 90], [-220, 190]], "picks-face picks-paper"));
   svg.append(poly([[0, 190], [230, 90], [10, 90], [-220, 190]], "picks-cut"));
   // inside: back wall, left wall, floor
-  svg.append(poly([[230, 90], [1344, 90], [1344, 660], [230, 660]], "picks-face", { fill: "url(#picks-g-back)" }));
-  svg.append(poly([[0, 190], [230, 90], [230, 660], [0, 760]], "picks-face", { fill: "url(#picks-g-left)" }));
-  svg.append(poly([[0, 760], [1114, 760], [1344, 660], [230, 660]], "picks-face", { fill: "url(#picks-g-floor)" }));
+  svg.append(poly([[230, 90], [1344, 90], [1344, 540], [230, 540]], "picks-face", { fill: "url(#picks-g-back)" }));
+  svg.append(poly([[0, 190], [230, 90], [230, 540], [0, 640]], "picks-face", { fill: "url(#picks-g-left)" }));
+  svg.append(poly([[0, 640], [1114, 640], [1344, 540], [230, 540]], "picks-face", { fill: "url(#picks-g-floor)" }));
   // the right wall from outside, the lid's flap folded down over it
-  svg.append(poly([[1114, 190], [1344, 90], [1344, 660], [1114, 760]], "picks-face", { fill: "url(#picks-g-right)" }));
-  svg.append(poly([[1114, 190], [1344, 90], [1344, 420], [1114, 520]], "picks-face picks-flap-teal"));
+  svg.append(poly([[1114, 190], [1344, 90], [1344, 540], [1114, 640]], "picks-face", { fill: "url(#picks-g-right)" }));
+  svg.append(poly([[1114, 190], [1344, 90], [1344, 400], [1114, 500]], "picks-face picks-flap-teal"));
   svg.append(poly([[1114, 190], [1344, 90], [1344, 104], [1114, 204]], "picks-face picks-flap-fold"));
-  svg.append(line([1114, 520], [1344, 420], "picks-cut"));
-  svg.append(line([1114, 190], [1114, 520], "picks-cut"));
-  svg.append(line([1344, 90], [1344, 420], "picks-cut"));
+  svg.append(line([1114, 500], [1344, 400], "picks-cut"));
+  svg.append(line([1114, 190], [1114, 500], "picks-cut"));
+  svg.append(line([1344, 90], [1344, 400], "picks-cut"));
   // folds: rims, inner edges, and the open front face
   for (const [a, b] of [
     [[230, 90], [1344, 90]], [[0, 190], [230, 90]], [[1114, 190], [1344, 90]],
-    [[230, 90], [230, 660]], [[230, 660], [1344, 660]], [[1344, 90], [1344, 660]],
-    [[0, 760], [230, 660]], [[1114, 760], [1344, 660]], [[1344, 660], [1344, 760]],
-    [[0, 190], [1114, 190]], [[0, 190], [0, 760]], [[1114, 190], [1114, 760]],
+    [[230, 90], [230, 540]], [[230, 540], [1344, 540]], [[1344, 90], [1344, 540]],
+    [[0, 640], [230, 540]], [[1114, 640], [1344, 540]], [[1344, 540], [1344, 640]],
+    [[0, 190], [1114, 190]], [[0, 190], [0, 640]], [[1114, 190], [1114, 640]],
   ]) svg.append(line(a, b));
-  svg.append(line([0, 760], [1114, 760], "picks-cut"));
+  svg.append(line([0, 640], [1114, 640], "picks-cut"));
   return svg;
 }
 
@@ -186,13 +186,13 @@ export function mount(root, api) {
     list.append(li); shade.append(sh);
     const size = (L) => slot.pose === "lie" ? L.case : slot.yaw ? L.turned : L.stand;
     bodies.push({ kind: "case", el: li, a, sh, t, slot, size, at: slot.at, pose: slot.pose, yaw: slot.yaw ?? 0,
-      restTilt: slot.pose === "lie" ? 0.05 : 0, tilt: 0, roll: 0, z: 0, wob: 0, x: 0, y: 0, w: 0, h: 0, vx: 0, vy: 0, rest: false, still: 0, drag: null });
+      restTilt: slot.tilt ?? 0, restRoll: slot.roll ?? 0, tilt: 0, roll: 0, z: 0, wob: 0, x: 0, y: 0, w: 0, h: 0, vx: 0, vy: 0, rest: false, still: 0, drag: null });
   }
   for (const r of REELS) {
     const el = h("i", { class: r.m ? null : "picks-d-only", draggable: "false" });
     const sh = h("i", { class: `picks-reel${r.m ? "" : " picks-d-only"}` });
     reels.append(el); shade.append(sh);
-    bodies.push({ kind: "reel", el, sh, size: (L) => (L === DESK ? [r.d[2], r.d[2]] : [r.m[2], r.m[2]]), at: { d: r.d, m: r.m }, spin: 0, tilt: 0, z: 0,
+    bodies.push({ kind: "reel", el, sh, size: (L) => { const d = (L === DESK ? r.d : r.m ?? r.d)[2]; return [d, d]; }, at: { d: r.d, m: r.m }, spin: 0, tilt: 0, z: 0,
       x: 0, y: 0, w: 0, h: 0, vx: 0, vy: 0, rest: false, still: 0, drag: null });
   }
   stage.append(shade, list, reels);
@@ -217,7 +217,7 @@ export function mount(root, api) {
   const live = api.has3d !== false;
   for (const b of bodies) {
     if (!live) continue;
-    if (b.kind === "case") b.c = api.addCase({ k: b.t.k ?? tapes.indexOf(b.t), el: b.a, pose: b.pose, tilt: b.restTilt, yaw: b.yaw, roll: 0, z: 0 });
+    if (b.kind === "case") { b.tilt = b.restTilt; b.roll = b.restRoll; b.c = api.addCase({ k: b.t.k ?? tapes.indexOf(b.t), el: b.a, pose: b.pose, tilt: b.restTilt, yaw: b.yaw, roll: b.restRoll, z: 0 }); }
     else b.c = api.addReel({ el: b.el, tilt: 0.04, spin: 0, z: 2 });
   }
 
@@ -273,15 +273,16 @@ export function mount(root, api) {
     }
     let awake = false;
     for (const b of bodies) {
-      if (b.off || b.drag) { if (b.drag) awake = true; continue; }
-      if (!b.rest) {
+      if (b.off) continue;
+      if (b.drag) awake = true;
+      else if (!b.rest) {
         if (Math.abs(b.vx) < 3 && Math.abs(b.vy) < 3) { b.still += dt; if (b.still > STILL) { b.rest = true; b.vx = b.vy = 0; } }
         else b.still = 0;
         awake = true;
       }
       if (b.kind === "case") {
         const want = b.drag ? b.drag.tilt : b.restTilt;
-        const wantRoll = b.drag ? b.drag.roll : 0;
+        const wantRoll = b.drag ? b.drag.roll : b.restRoll;
         const wantZ = b.drag ? 120 : 0;
         b.wob *= Math.pow(0.02, dt);
         const nt = want + Math.sin(performance.now() / 60) * b.wob, nr = wantRoll, nz = wantZ;
@@ -323,7 +324,8 @@ export function mount(root, api) {
   const run = () => { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } };
   // Without motion, or at the start: settle at once.
   const settle = () => { for (let i = 0; i < 600 && step(1 / 60); i++); draw(); };
-  const reset = () => { for (const b of bodies) place(b); settle(); };
+  // On the phone every case faces straight on, so none spills past the walls.
+  const reset = () => { for (const b of bodies) { place(b); if (b.kind === "case") b.c?.set({ yaw: L === PHONE ? 0 : b.yaw }); } settle(); };
   reset();
   phone.addEventListener("change", () => { fit(); reset(); });
 

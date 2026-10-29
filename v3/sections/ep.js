@@ -7,15 +7,20 @@ const HUB = new URL("../assets/hub.png", import.meta.url).href;
 // A case is 110 long, 70 wide and 17 thick; everything here is in lengths.
 const THICK = 17 / 110;
 const WIDE = 70 / 110;
-const TURN = 1.1;   // yaw of a case turned to show part of its cover
+const TURN = 1.25;  // yaw of a case turned to show its spine and part of its cover
 const LEAN = 0.38;  // roll of a leaning case, about 22 degrees
-const GAP = 0.045;  // between cases, as in the wireframe (17px at 393)
-const VOL_GAP = 0.11; // a little more between volumes
+const GAP = 0.07;   // between cases: the wireframe's 17px plus the side wall the perspective shows
+const VOL_GAP = 0.06; // a little more between volumes
 // Rolls here are clockwise, as CSS rotate() is; the core's roll is a
 // three.js turn about Z, counter-clockwise.
 const ROLL_SIGN = -1;
 // Degrees the hubs turn per pixel of shelf: about one turn per page.
 const SPIN = 0.32;
+// The core's camera (index.html): 30 degree field of view, centred on the
+// viewport, the anchor's centre at depth 0, a focused case lifted 30px
+// toward the viewer and 6px up. Used only to ring the focused case where
+// it is drawn; see the report's request for a core API to replace it.
+const FOV = 30, LIFT_Z = 30, LIFT_Y = 6;
 
 // The shelf's rhythm, after the wireframe: spines, a case turned to show
 // its cover, a pair leaning on the next spine.
@@ -67,7 +72,7 @@ function layout(tapes) {
       if (out[i - 1]?.kind === "lean") s.ml = (THICK + 0.02) / Math.cos(LEAN) - out[i - 1].w;
     }
     // A spine the pair leans on stands close to it.
-    if (kind !== "lean" && out[i - 1]?.kind === "lean") s.ml = 0.012;
+    if (kind !== "lean" && out[i - 1]?.kind === "lean") s.ml = GAP * 0.6;
     if (newVol) s.ml += VOL_GAP;
     out.push(s);
   });
@@ -98,11 +103,10 @@ export function mount(root, api) {
   const capName = h("span", { class: "ep-cap-name" });
   // The caption repeats each link's name for the eye; the links carry it for
   // a screen reader.
-  const caption = h("p", { class: "ep-caption", "aria-hidden": "true" }, capWhere, capName);
+  const caption = h("p", { class: "ep-caption", "aria-hidden": "true" }, capName, capWhere);
   const bonus = h("h2", { class: "ep-bonus", id: "bonus-tracks", text: "Bonus Tracks" });
-  // The focus mark: a teal bar under the focused case. The core draws the
-  // case in perspective, so a ring round its link would sit off the case;
-  // the bar sits under the case's centre, where the core puts it.
+  // The focus ring. The core draws the case in perspective, so a ring
+  // round its link would sit off the case; this one rings where it's drawn.
   const mark = h("i", { class: "ep-mark", "aria-hidden": "true", hidden: true });
   const box = h("div", { class: "ep-box" }, prevBtn, win, nextBtn, caption, bonus, mark);
   root.append(title, hint, box);
@@ -172,16 +176,14 @@ export function mount(root, api) {
   function setCaption(i) {
     if (i < 0) {
       const vols = volumesInView();
-      capWhere.textContent = vols.map((v) => `Vol. ${v.n}`).join(" and ");
-      capName.textContent = vols.map((v) => v.title).join(" / ");
-      capName.classList.add("is-quiet");
+      capName.textContent = "";
+      capWhere.textContent = `${tapes.length} tapes · ${vols.map((v) => `Vol. ${v.n}, ${v.title}`).join(" · ")}`;
       return;
     }
     const s = plan[i], t = s.t;
     const side = t.sideName && t.sideName !== t.side && t.sideName !== `Side ${t.side}` ? `Side ${t.side}, ${t.sideName}` : `Side ${t.side}`;
     capWhere.replaceChildren(`Vol. ${t.vol.n}`, h("span", { class: "ep-cap-vol", text: ` · ${t.vol.title}` }), ` · ${side} · Playlist ${pad2(s.n)}`);
     capName.textContent = t.name;
-    capName.classList.remove("is-quiet");
   }
   let hovered = -1, focused = -1;
   const recaption = () => setCaption(hovered >= 0 ? hovered : focused);
@@ -207,25 +209,41 @@ export function mount(root, api) {
     e.preventDefault();
     if (j < 0 || j >= links.length || j === i) return;
     setStop(j);
+    slots[j].classList.remove("is-cut");
     links[j].focus({ preventScroll: true });
     show(slots[j]);
   });
 
   /* ------------------------------------------------------- focus mark */
   let marked = -1;
-  function placeMark() {
-    if (marked < 0) { mark.hidden = true; return; }
-    const li = slots[marked], b = box.getBoundingClientRect(), r = li.getBoundingClientRect(), wr = win.getBoundingClientRect();
-    const s = plan[marked];
-    // A leaning case touches the shelf left of its box's centre.
-    const foot = s.roll ? (r.height / 2) * Math.sin(s.roll) : 0;
-    const cx = r.left + r.width / 2 - foot;
-    mark.hidden = cx < wr.left || cx > wr.right;
-    mark.style.left = `${cx - b.left}px`;
-    mark.style.top = `${r.bottom - b.top}px`;
-    mark.style.width = `${Math.min(r.width, r.height * 0.16)}px`;
+  // The screen box of case i as the core draws it when focused: its eight
+  // corners, posed and projected through the core's camera.
+  function drawnBox(i, lifted = true) {
+    const s = plan[i], r = slots[i].getBoundingClientRect();
+    const W = innerWidth, H = innerHeight, camZ = (H / 2) / Math.tan((FOV * Math.PI) / 360);
+    const len = r.height, ext = s.pose === "front" ? [len * WIDE, len, len * THICK] : [len * THICK, len, len * WIDE];
+    const up = lifted ? 1 : 0;
+    const cx = r.left + r.width / 2 - W / 2, cy = H / 2 - (r.top + r.height / 2) + up * LIFT_Y, cz = (s.kind === "lean" ? 2 : 0) + up * LIFT_Z;
+    const yaw = s.yaw - up * 0.06, roll = s.roll * ROLL_SIGN;
+    const out = { l: Infinity, t: Infinity, r: -Infinity, b: -Infinity };
+    for (const sx of [-0.5, 0.5]) for (const sy of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) {
+      let x = sx * ext[0], y = sy * ext[1], z = sz * ext[2];
+      [x, z] = [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)];
+      [x, y] = [x * Math.cos(roll) - y * Math.sin(roll), x * Math.sin(roll) + y * Math.cos(roll)];
+      const k = camZ / (camZ - (z + cz)), px = W / 2 + (x + cx) * k, py = H / 2 - (y + cy) * k;
+      out.l = Math.min(out.l, px); out.r = Math.max(out.r, px); out.t = Math.min(out.t, py); out.b = Math.max(out.b, py);
+    }
+    return out;
   }
-  track.addEventListener("focusout", () => { marked = -1; placeMark(); });
+  function placeMark() {
+    if (marked < 0 || !api.has3d) { mark.hidden = true; return; }
+    const b = box.getBoundingClientRect(), wr = win.getBoundingClientRect(), r = slots[marked].getBoundingClientRect();
+    const c = r.left + r.width / 2;
+    mark.hidden = c < wr.left || c > wr.right;
+    const d = drawnBox(marked);
+    Object.assign(mark.style, { left: `${d.l - b.left}px`, top: `${d.t - b.top}px`, width: `${d.r - d.l}px`, height: `${d.b - d.t}px` });
+  }
+  track.addEventListener("focusout", () => { marked = -1; placeMark(); requestAnimationFrame(cut); });
 
   // A case takes focus: it becomes the tab stop, the caption names it and,
   // from the keyboard, the mark goes under it.
@@ -238,12 +256,28 @@ export function mount(root, api) {
     placeMark();
   });
 
+  /* ----------------------------------------------- clean ends (WebGL) */
+  // The core draws a case while its link's centre is in the window, so a
+  // case cut by the window's edge would be drawn whole, under a hub. Here a
+  // case whose drawn box would reach past the room beside the hubs has its
+  // link taken out of layout (a link with no box isn't drawn); the focused
+  // case always stays.
+  function cut() {
+    if (!api.has3d) return;
+    const wr = win.getBoundingClientRect(), pr = prevBtn.getBoundingClientRect(), nr = nextBtn.getBoundingClientRect();
+    const beside = pr.top < wr.bottom && pr.bottom > wr.top; // hubs either side, not below
+    const lo = beside ? pr.right + 12 : wr.left - 8, hi = beside ? nr.left - 12 : wr.right + 8;
+    slots.forEach((li, i) => {
+      if (links[i] === document.activeElement) { li.classList.remove("is-cut"); return; }
+      const d = drawnBox(i, false);
+      li.classList.toggle("is-cut", d.l < lo || d.r > hi);
+    });
+  }
+
   /* ------------------------------------------------------------ hubs */
   function sync() {
     const x = win.scrollLeft, m = maxX(), w = win.clientWidth;
-    // As the core does: a case whose centre has left the window isn't drawn,
-    // so its link mustn't take the pointer either.
-    for (const li of slots) { const c = li.offsetLeft + li.offsetWidth / 2; li.classList.toggle("is-out", c < x || c > x + w); }
+    cut();
     placeMark();
     box.style.setProperty("--ep-spin", `${(x * SPIN).toFixed(2)}deg`);
     setDisabled(prevBtn, x <= 1);
@@ -259,7 +293,7 @@ export function mount(root, api) {
   let settle = 0;
   function settled() {
     if (!track.contains(document.activeElement)) {
-      const i = slots.findIndex((li) => fullyIn(li));
+      const i = slots.findIndex((li) => fullyIn(li) && !li.classList.contains("is-cut"));
       if (i >= 0) setStop(i);
     }
     if (hovered < 0 && focused < 0) setCaption(-1);
@@ -272,6 +306,7 @@ export function mount(root, api) {
   }, { passive: true });
   new ResizeObserver(() => { sync(); settled(); }).observe(win);
   addEventListener("resize", placeMark, { passive: true });
+  addEventListener("scroll", () => { if (marked >= 0) placeMark(); }, { passive: true });
 
   /* ------------------------------------------------- Bonus Tracks turns */
   if (reduce) bonus.classList.add("is-upright");
