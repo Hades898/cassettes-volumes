@@ -20,8 +20,8 @@
 
 /* The two titles: caps only, trimmed to the cap height so they sit on the
    box's edges exactly. */
-.ep-title,
-.ep-bonus {
+.ep .ep-title,
+.ep .ep-bonus {
   margin: 0;
   font: 400 var(--display) / 1 var(--font-display);
   letter-spacing: 0;
@@ -30,7 +30,7 @@
   color: var(--brown);
   white-space: nowrap;
 }
-.ep-title {
+.ep .ep-title {
   position: relative;
   z-index: 2;
   width: fit-content;
@@ -39,7 +39,7 @@
 }
 
 /* The box. Static, so the canvas draws the cases above it. */
-.ep-box {
+.ep .ep-box {
   position: relative;
   display: grid;
   grid-template-columns: var(--hub) minmax(0, 1fr) var(--hub);
@@ -51,7 +51,7 @@
 }
 
 /* The hubs: a teal wheel with its centre punched out, as drawn. */
-.ep-hub {
+.ep .ep-hub {
   position: relative;
   z-index: 2;
   width: var(--hub);
@@ -64,9 +64,9 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.ep-hub--prev { grid-area: prev; }
-.ep-hub--next { grid-area: next; }
-.ep-hub img {
+.ep .ep-hub--prev { grid-area: prev; }
+.ep .ep-hub--next { grid-area: next; }
+.ep .ep-hub img {
   display: block;
   width: 100%;
   height: 100%;
@@ -75,7 +75,7 @@
   pointer-events: none;
   user-select: none;
 }
-.ep-hub::after {
+.ep .ep-hub::after {
   content: "";
   position: absolute;
   inset: 13%;
@@ -84,16 +84,16 @@
   pointer-events: none;
 }
 @media (hover: hover) {
-  .ep-hub:not([aria-disabled="true"]):hover { --ep-nudge: 14deg; }
-  .ep-hub--prev:not([aria-disabled="true"]):hover { --ep-nudge: -14deg; }
+  .ep .ep-hub:not([aria-disabled="true"]):hover { --ep-nudge: 14deg; }
+  .ep .ep-hub--prev:not([aria-disabled="true"]):hover { --ep-nudge: -14deg; }
 }
-.ep-hub:active:not([aria-disabled="true"]) img { scale: 0.94; }
-.ep-hub[aria-disabled="true"] { cursor: default; }
-.ep-hub[aria-disabled="true"] img { opacity: 0.3; }
-.ep-hub:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+.ep .ep-hub:active:not([aria-disabled="true"]) img { scale: 0.94; }
+.ep .ep-hub[aria-disabled="true"] { cursor: default; }
+.ep .ep-hub[aria-disabled="true"] img { opacity: 0.3; }
+.ep .ep-hub:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
 
 /* The window the shelf scrolls in. It clips the cases (data-clip). */
-.ep-window {
+.ep .ep-window {
   grid-area: win;
   overflow-x: auto;
   overflow-y: hidden;
@@ -104,9 +104,9 @@
   padding-block: 12px;
   margin-block: -12px;
 }
-.ep-window::-webkit-scrollbar { display: none; }
+.ep .ep-window::-webkit-scrollbar { display: none; }
 
-.ep-track {
+.ep .ep-track {
   position: relative;
   display: flex;
   align-items: flex-end;
@@ -116,7 +116,7 @@
   padding: 0 calc(var(--len) * 0.036);
   list-style: none;
 }
-.ep-slot {
+.ep .ep-slot {
   position: relative;
   flex: none;
   width: calc(var(--len) * var(--w));
@@ -128,7 +128,7 @@
 
 /* The link is the case's box; only its face takes the pointer, so a
    leaning case answers where it is drawn, not across its whole box. */
-.ep-case {
+.ep .ep-case {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -139,7 +139,7 @@
   color: inherit;
   -webkit-tap-highlight-color: transparent;
 }
-.ep-face {
+.ep .ep-face {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -156,8 +156,8 @@
 
 /* Focus: with WebGL, the teal mark under the case (and the core lifts the
    case); without it, a ring round the drawn face. */
-.no3d .ep-case:focus-visible .ep-face { outline: 2px solid var(--teal); outline-offset: 5px; }
-.ep-mark {
+.ep.no3d .ep-case:focus-visible .ep-face { outline: 2px solid var(--teal); outline-offset: 5px; }
+.ep .ep-mark {
   position: absolute;
   z-index: 2;
   height: 3px;
@@ -166,11 +166,11 @@
   background: var(--teal);
   pointer-events: none;
 }
-.no3d .ep-mark { display: none; }
+.ep.no3d .ep-mark { display: none; }
 
 /* No WebGL: the wireframe's white cases, named. */
-.ep-face b, .ep-face small { display: none; }
-.no3d .ep-face {
+.ep .ep-face b, .ep .ep-face small { display: none; }
+.ep.no3d .ep-face {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -181,31 +181,32 @@
   border-top: 6px solid var(--c, var(--teal));
   box-shadow: 0 1px 0 rgb(0 0 0 / 0.08), 0 10px 22px -14px rgb(0 0 0 / 0.35);
 }
-.no3d .ep-face b {
+.ep.no3d .ep-face b {
   display: block;
   font: 400 clamp(1.125rem, calc(var(--len) * 0.062), 1.5rem) / 1 var(--font-display);
   writing-mode: vertical-rl;
   white-space: nowrap;
   color: var(--ink);
 }
-.no3d .ep-face small {
+.ep.no3d .ep-face small {
   display: block;
   font: 400 10px / 1 var(--font-mono);
   letter-spacing: 0.08em;
   color: var(--brown);
 }
-.no3d .ep-slot--front .ep-face {
+.ep.no3d .ep-slot:not(.ep-slot--front) .ep-face small { writing-mode: vertical-rl; white-space: nowrap; }
+.ep.no3d .ep-slot--front .ep-face {
   align-items: flex-start;
   padding: 16px 14px 14px;
   border-top-width: 10px;
 }
-.no3d .ep-slot--front .ep-face b { writing-mode: horizontal-tb; white-space: normal; font-size: clamp(1.25rem, calc(var(--len) * 0.07), 1.75rem); line-height: 1.05; }
-.no3d .ep-case:hover .ep-face { translate: -50% calc(-50% - 6px); }
-.no3d .ep-face { transition: translate 180ms ease; }
+.ep.no3d .ep-slot--front .ep-face b { writing-mode: horizontal-tb; white-space: normal; font-size: clamp(1.25rem, calc(var(--len) * 0.07), 1.75rem); line-height: 1.05; }
+.ep.no3d .ep-case:hover .ep-face { translate: -50% calc(-50% - 6px); }
+.ep.no3d .ep-face { transition: translate 180ms ease; }
 
 /* The caption: what the pointer or the focus is on. One line at a fixed
    height, so the box never changes size as it changes. */
-.ep-caption {
+.ep .ep-caption {
   grid-area: cap;
   position: relative;
   z-index: 2;
@@ -220,7 +221,7 @@
   white-space: nowrap;
   color: var(--brown);
 }
-.ep-cap-where {
+.ep .ep-cap-where {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -229,19 +230,19 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.ep-cap-name {
+.ep .ep-cap-name {
   flex: none;
   font: 400 clamp(1.375rem, 1rem + 0.75vw, 1.75rem) / 1 var(--font-display);
   color: var(--ink);
 }
-.ep-cap-name.is-quiet { font-style: italic; color: var(--brown); }
+.ep .ep-cap-name.is-quiet { font-style: italic; color: var(--brown); }
 
 /* Bonus Tracks: upside down across the box's bottom-right edge, its caps
    centred on the edge. Once it is fully in view it turns over, the way a
    tape is flipped to side B: half a turn about each in-plane axis is the
    same upside-down start as a half turn in the plane, but it tumbles in
    depth instead of sweeping across the shelf. */
-.ep-bonus {
+.ep .ep-bonus {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -249,25 +250,25 @@
   transform: translateY(50%) perspective(900px) rotateX(180deg) rotateY(180deg);
   transition: transform 1000ms cubic-bezier(0.65, 0, 0.35, 1);
 }
-.ep-bonus.is-upright { transform: translateY(50%) perspective(900px) rotateX(0deg) rotateY(0deg); }
+.ep .ep-bonus.is-upright { transform: translateY(50%) perspective(900px) rotateX(0deg) rotateY(0deg); }
 
-.ep-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.ep .ep-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 
 /* Without cap trimming (Firefox) the line box keeps its leading; the same
    16px of overlap needs a deeper pull. */
 @supports not (text-box: trim-both cap alphabetic) {
-  .ep-title { margin-bottom: -0.36em; }
+  .ep .ep-title { margin-bottom: -0.36em; }
 }
 
 /* Where the caption is short of room, the volume's title goes first. */
-@media (max-width: 1279px) { .ep-cap-vol { display: none; } }
+@media (max-width: 1279px) { .ep .ep-cap-vol { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ep-bonus, .ep-bonus.is-upright { transform: translateY(50%); transition: none; }
-  .no3d .ep-face { transition: none; }
+  .ep .ep-bonus, .ep .ep-bonus.is-upright { transform: translateY(50%); transition: none; }
+  .ep.no3d .ep-face { transition: none; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .ep-hub img { transition: --ep-nudge 260ms cubic-bezier(0.2, 0.7, 0.2, 1), scale 120ms ease; }
+  .ep .ep-hub img { transition: --ep-nudge 260ms cubic-bezier(0.2, 0.7, 0.2, 1), scale 120ms ease; }
 }
 
 /* A phone: the shelf takes the box's width, the hubs drop below it with
@@ -275,15 +276,15 @@
    closer's overhang. */
 @media (max-width: 700px) {
   .ep { --hub: 48px; }
-  .ep-title { margin-left: 12px; }
-  .ep-box {
+  .ep .ep-title { margin-left: 12px; }
+  .ep .ep-box {
     grid-template-columns: var(--hub) minmax(0, 1fr) var(--hub);
     grid-template-areas: "win win win" "prev cap next";
     row-gap: 34px;
     column-gap: 10px;
     padding: 38px 12px calc(var(--display) * 0.36 + 18px);
   }
-  .ep-caption {
+  .ep .ep-caption {
     max-width: none;
     height: auto;
     min-height: 2.75rem;
@@ -295,8 +296,8 @@
     gap: 6px;
     text-align: center;
   }
-  .ep-cap-where { max-width: 100%; font-size: 10px; line-height: 1.35; letter-spacing: 0.1em; white-space: normal; text-wrap: balance; }
-  .ep-cap-vol { display: none; }
-  .ep-cap-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .ep-cap-name { font-size: 1.25rem; }
+  .ep .ep-cap-where { max-width: 100%; font-size: 10px; line-height: 1.35; letter-spacing: 0.1em; white-space: normal; text-wrap: balance; }
+  .ep .ep-cap-vol { display: none; }
+  .ep .ep-cap-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .ep .ep-cap-name { font-size: 1.25rem; }
 }

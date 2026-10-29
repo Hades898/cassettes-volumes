@@ -300,27 +300,18 @@
   @media (min-width: 900px) { .hero .photo { background-image: image-set(url("assets/hero-2400.webp") 1x); } }
   .hero .photo::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.42); clip-path: polygon(0 0, 100% 0, 100% 67%, 0 100%); }
   .hero .photo::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 30%); }
-  .rack { --step: calc(var(--cw) * 0.664); position: absolute; top: var(--rt); left: 50%; transform: translateX(-50%); display: flex; margin: 0; padding: 0; list-style: none; z-index: 2; }
-  .rack li { width: var(--step); flex: none; }
-  .rack li:last-child { width: var(--cw); }
+  /* The ring's links: each is moved over its case every frame. */
+  .rack { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; z-index: 2; }
+  .rack li { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  .rack .slot { width: 100%; height: 100%; }
   .slot { display: block; color: transparent; text-decoration: none; font-size: 1px; overflow: hidden; }
-  .rack .slot { width: var(--cw); height: calc(var(--cw) * 1.5714); }
-  .drop { position: absolute; z-index: 2; left: 50%; top: var(--dt); width: var(--dw); height: calc(var(--dw) * 1.5714); transform: translateX(-50%); }
-  .drop .slot { width: 100%; height: 100%; }
-  .hero .hint { position: absolute; z-index: 2; left: calc(50% + var(--dw) / 2 + 28px); top: calc(var(--dt) + var(--dw) * 0.9); max-width: 15rem; margin: 0; color: rgba(255, 255, 255, 0.82); font: 400 11px/1.6 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
-  .hero .hint b { display: block; font: italic 400 1.375rem/1.15 var(--font-display); letter-spacing: 0; text-transform: none; color: #fff; margin-top: 4px; }
 
-  /* Ring or row: the same playlists in the wireframe's two arrangements,
-     a ring round the chosen one (591:1114) or a hanging row (639:3187). */
-  .arrange { position: absolute; z-index: 3; left: var(--gutter); top: 16px; display: flex; align-items: center; gap: 6px; font: 400 11px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.82); }
-  .arrange span { margin-right: 4px; }
-  .arrange button { appearance: none; background: rgba(0, 0, 0, 0.18); color: #fff; border: 1px dashed rgba(255, 255, 255, 0.7); min-height: 32px; padding: 0 11px; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
-  .arrange button[aria-pressed="true"] { background: #fff; color: var(--ink); border: 1px solid #fff; }
-  .arrange button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  .hero.arr-ring .rack { inset: 0; transform: none; display: block; }
-  .hero.arr-ring .rack li { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-  .hero.arr-ring .rack .slot { width: 100%; height: 100%; }
-  .hero.arr-ring .drop, .hero.arr-ring .hint { display: none; }
+  .hero .rack .slot { position: static; inset: auto; }
+  .band .title.swap > * { animation: band-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .band .title.swap > :nth-child(2) { animation-delay: 40ms; }
+  .band .title.swap > :nth-child(3) { animation-delay: 80ms; }
+  @keyframes band-in { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) { .band .title.swap > * { animation: none; } }
 
   /* The band: teal, on the slant, naming the chosen playlist. */
   .band { position: absolute; z-index: 0; left: -6%; right: -6%; top: calc(var(--hh) * 0.69); height: calc(var(--hh) * 0.2); background: var(--teal); transform: rotate(-7deg); transform-origin: 50% 50%; color: #fff; display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) 1fr; align-items: center; padding: 0 calc(6% + var(--gutter)); }
@@ -366,7 +357,6 @@
     .site .sections { justify-content: flex-start; gap: 22px; }
     .hero { height: 760px; }
     .hero { --hh: 780px; --cw: calc((100vw - 24px) / 5.65); --dw: 44vw; --rt: 16px; --dt: 118px; }
-    .hero .hint { display: none; }
     .band { grid-template-columns: 1fr; top: 436px; height: 224px; transform: rotate(-7deg); padding: 18px calc(6% + 18px); gap: 8px; }
     .band .tags { order: 3; margin: 0; align-self: center; }
     .band .meta { order: 2; justify-self: center; }
@@ -434,10 +424,7 @@
     <div class="photo" role="img" aria-label="A dress made of film strips and photographic slides, worn at night"></div>
     <div class="wedge" aria-hidden="true"></div>
     <h1 class="sr" id="hero-title">Cassettes Vol. 01, Both Sides, Now: eight playlists</h1>
-    <div class="arrange" id="arrange" role="group" aria-label="Arrange the playlists"><span aria-hidden="true">Arrange</span><button type="button" data-arr="ring" aria-pressed="true">Ring</button><button type="button" data-arr="row" aria-pressed="false">Row</button></div>
     <ol class="rack" id="rack" aria-label="Vol. 01’s playlists: choose one"></ol>
-    <div class="drop" id="drop"><a class="slot" id="drop-slot" href="#/01-a1"></a></div>
-    <p class="hint" id="hint" aria-hidden="true">Chosen, press to open<b id="hint-name"></b></p>
     <div class="band" id="band">
       <div class="tags" id="b-tags" aria-label="Forms and side"></div>
       <div class="title"><small id="b-kick"></small><h2 id="b-name"></h2><span class="sub" id="b-sub"></span></div>
@@ -592,7 +579,6 @@ const RACK = TAPES.flatMap((t, k) => (t.vol.n === "01" ? [k] : []));
 let sel = RACK[0], hoverK = -1, viaKeys = false;
 addEventListener("keydown", () => { viaKeys = true; }, true);
 addEventListener("pointerdown", () => { viaKeys = false; }, true);
-const dropSlot = $("#drop-slot");
 RACK.forEach((k) => {
   const t = TAPES[k];
   listEl.append(h("li", {}, h("a", { class: "slot", href: `#/${t.key}`, "data-k": k, text: tapeLabel(t) })));
@@ -606,15 +592,27 @@ listEl.addEventListener("click", (e) => {
   if (k !== sel) { e.preventDefault(); choose(k); }
 });
 listEl.addEventListener("focusin", (e) => { const a = e.target.closest("a.slot"); if (a && viaKeys) choose(Number(a.dataset.k)); });
+// Arrow keys step through the playlists, round the ring.
+listEl.addEventListener("keydown", (e) => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!step) return;
+  e.preventDefault();
+  const i = (RACK.indexOf(sel) + step + RACK.length) % RACK.length;
+  listEl.children[i]?.firstChild.focus();
+  choose(RACK[i]);
+});
 for (const [el, on] of [[listEl, "pointerover"], [listEl, "pointerout"]]) el.addEventListener(on, (e) => {
   const a = e.target.closest("a.slot");
   hoverK = on === "pointerover" && a ? Number(a.dataset.k) : -1; kick();
 });
-function choose(k) {
+// Chosen by hand, the ring holds still a while before it turns again.
+let holdUntil = 0, bandK = -1;
+function choose(k, auto = false) {
   if (!RACK.includes(k)) return;
-  sel = k;
+  if (!auto) holdUntil = performance.now() + 6000;
+  if (k === bandK) return;
+  sel = bandK = k;
+  const title = $("#band .title"); title.classList.remove("swap"); void title.offsetWidth; title.classList.add("swap");
   const t = TAPES[k], side = sideName(t), forms = [...new Set(t.slugs.map((s) => PIECES[s].form))];
-  dropSlot.href = `#/${t.key}`; dropSlot.textContent = `Open ${tapeLabel(t)}`;
   for (const a of listEl.querySelectorAll("a.slot")) a.toggleAttribute("aria-current", Number(a.dataset.k) === k);
   $("#b-kick").textContent = `Playlist ${two(numOf(t))}`;
   $("#b-name").textContent = t.name;
@@ -627,7 +625,6 @@ function choose(k) {
   $("#b-about").replaceChildren(
     `${t.vol.title}. ${t.slugs.map((s) => `${PIECES[s].en[0]}: ${PIECES[s].en[1].replace(/\.$/, "")}.`).join(" ")} `,
     h("a", { href: `#/${t.key}`, text: "Open the playlist →" }));
-  $("#hint-name").textContent = t.name;
   kick();
 }
 
@@ -673,18 +670,9 @@ $("#note-body").replaceChildren(...NOTE.map((p) => h("p", { text: p })),
 // The submissions belt: the line, again and again.
 for (const run of [$("#run"), $("#run2")]) for (let i = 0; i < 4; i++) run.append(h("span", { text: "Submissions opening soon" }), h("i"));
 
-// Ring (the default) or row, remembered in this browser.
+// The ring turns; ringPhase is where it stands, in cases.
 const heroEl = $("#volumes");
-let layout = "ring", ringPhase = RACK.indexOf(sel);
-try { if (localStorage.getItem("cassettes-arrange") === "row") layout = "row"; } catch {}
-function arrange(to) {
-  layout = to; heroEl.classList.toggle("arr-ring", to === "ring");
-  for (const b of $("#arrange").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.arr === to));
-  if (to === "row") for (const li of listEl.children) li.removeAttribute("style");
-  try { localStorage.setItem("cassettes-arrange", to); } catch {}
-  kick();
-}
-$("#arrange").addEventListener("click", (e) => { const b = e.target.closest("button[data-arr]"); if (b) arrange(b.dataset.arr); });
+let ringPhase = RACK.indexOf(sel);
 
 $("#count").textContent = `${VOLUMES.length} volumes · ${TAPES.length} tapes`;
 
@@ -961,7 +949,7 @@ catch { document.documentElement.classList.add("webgl-off"); canvas.remove(); }
 
 const groundNow = new THREE.Color("#14110f"), groundTo = new THREE.Color("#14110f");
 let W = innerWidth, H = innerHeight;
-let clearA = 0, addCaseImpl = () => ({ set() {}, remove() {} }), addReelImpl = () => ({ set() {}, remove() {} }), resizeProps = () => {};
+let spinV = 0, clearA = 0, addCaseImpl = () => ({ set() {}, remove() {} }), addReelImpl = () => ({ set() {}, remove() {} }), resizeProps = () => {};
 let scene, camera, tapes = [], kick = () => {}, turnTo = 0, syncTurn = () => {}, layoutOpen = () => {}, sharpen = () => {}, remeasure = () => {}, opened = -1, stackSmooth = scrollY;
 // Playing a piece: the deck's timeline, set while it runs.
 let play = null, startPlay = null, resetPlayer = () => {}, arrive = false;
@@ -1945,16 +1933,31 @@ if (renderer) {
     clearA = near(clearA, home ? 0 : 1, 0.12, 0.002);
     renderer.setClearColor(groundNow, clearA);
     const tp = play ? Math.max(0, (performance.now() - play.t0) / 1000) : 0;
-    const dropEl = $("#drop");
     // The ring: Vol. 01's playlists stand on a circle seen from a little
     // above, the chosen one at the front, nearest and largest; choosing
     // another turns the ring the short way round until it comes forward.
     let ringC = null, heroR = null;
-    if (home && layout === "ring") {
+    if (home) {
       heroR = heroEl.getBoundingClientRect();
       const hh = heroR.height, mob = mobile(), N = RACK.length, goal = RACK.indexOf(sel);
-      let d = (((goal - ringPhase) % N) + N) % N; if (d > N / 2) d -= N;
-      if (Math.abs(d) > 1e-3) { ringPhase = (((ringPhase + d * a(0.085)) % N) + N) % N; busy = true; } else ringPhase = goal;
+      // It turns all the time, a case every six seconds or so, and the one
+      // passing the front becomes the chosen one; a pointer over any case,
+      // a choice by hand, or the hero off screen stops it, on the nearest.
+      // A case under the pointer freezes it on the spot, so the case stays
+      // under the pointer; the turn eases back in once the pointer leaves.
+      const held = hoverK >= 0;
+      const turning = !reduce && heroR.bottom > 0 && heroR.top < H && !held && performance.now() > holdUntil && !document.hidden && opened < 0 && !play;
+      spinV = held ? 0 : near(spinV, turning ? 0.16 : 0, 0.035, 1e-4);
+      if (held) { /* stays where it stopped */ }
+      else if (spinV > 2e-3) {
+        ringPhase = (ringPhase + (spinV * dt) / 1000) % N; busy = true;
+        const front = ((Math.round(ringPhase) % N) + N) % N;
+        if (RACK[front] !== sel) choose(RACK[front], true);
+      } else {
+        let d = (((goal - ringPhase) % N) + N) % N; if (d > N / 2) d -= N;
+        if (Math.abs(d) > 1e-3) { ringPhase = (((ringPhase + d * a(0.085)) % N) + N) % N; busy = true; } else ringPhase = goal;
+        if (turning) busy = true;
+      }
       ringC = { N, x: heroR.left + heroR.width / 2, y: heroR.top + scrollY + hh * (mob ? 0.27 : 0.31), rx: Math.min(heroR.width * (mob ? 0.34 : 0.31), hh * 0.72), rv: hh * (mob ? 0.12 : 0.14), rz: Math.min(heroR.width * 0.12, 180), ch: hh * (mob ? 0.19 : 0.28), front: hh * (mob ? 0.36 : 0.41) };
     }
     tapes.forEach((g, k) => {
@@ -1983,18 +1986,6 @@ if (renderer) {
           const hgt = ringC.ch + (ringC.front - ringC.ch) * f;
           const lean = f > 0.5 && pointer.in && !mobile() ? clamp((pointer.x / W - 0.5) * 2, -1, 1) * 0.14 * f : 0;
           tgt = { x: ringC.x + ringC.rx * Math.sin(th), y: ringC.y + ringC.rv * c, s: hgt / w, z: ringC.rz * c + f * 40, q: poseQ(qPose, "front", 0, 0.3 + 0.3 * Math.sin(th) + lean, 0) };
-        }
-        else if (inRack) {
-          const chosen = k === sel, el = chosen ? dropEl : listEl.children[RACK.indexOf(k)];
-          const rr = el?.getBoundingClientRect();
-          if (rr && rr.height) {
-            const i = RACK.indexOf(k);
-            // Hanging cases turn a little, alternately, as if each hung from
-            // one point; the chosen one faces out, tilting toward the pointer.
-            const sway = chosen ? 0.3 + (pointer.in && !mobile() ? clamp((pointer.x / W - 0.5) * 2, -1, 1) * 0.16 : 0) : 0.34 + (i % 2 ? 0.08 : -0.04);
-            const pitch = chosen && pointer.in && !mobile() ? clamp((pointer.y / H - 0.5) * 2, -1, 1) * -0.06 : 0;
-            tgt = { x: rr.left + rr.width / 2, y: rr.top + rr.height / 2 + scrollY, s: rr.height / w, z: chosen ? 70 : i * 3, q: poseQ(qPose, "front", pitch, sway, 0) };
-          }
         }
         if (tgt) {
           if (!u.hq || u.snap) { u.hq = (u.hq ?? new THREE.Quaternion()).copy(tgt.q); u.hx = tgt.x; u.hy = tgt.y; u.hs = tgt.s; u.hz = tgt.z; u.snap = false; }
@@ -2034,6 +2025,7 @@ if (renderer) {
   }
   addEventListener("scroll", () => { progress(); if (readerEl.hidden) kick(); }, { passive: true });
   addEventListener("resize", resize);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   resize();
   deck.visible = cassette.visible = true; renderer.compile(scene, camera); deck.visible = cassette.visible = false;
   requestAnimationFrame(() => canvas.classList.add("ready"));
@@ -2042,8 +2034,7 @@ if (renderer) {
 }
 
 /* --------------------------------------------------------- v3: sections */
-arrange(layout);
-choose(sel);
+choose(sel, true);
 // Each home section is its own module (sections/CONTRACT.md); one that
 // fails to load leaves the rest of the page working.
 const api = {
@@ -2111,7 +2102,7 @@ function route() {
     opened = -1; turnTo = 0;
     scrollTo(0, stackScroll); stackSmooth = stackScroll;
     remeasure();
-    if (was.k >= 0) (tapes[was.k]?.userData.from?.el ?? (was.k === sel ? dropSlot : listEl.children[RACK.indexOf(was.k)]?.firstChild))?.focus({ preventScroll: true });
+    if (was.k >= 0) (tapes[was.k]?.userData.from?.el ?? listEl.children[RACK.indexOf(was.k)]?.firstChild)?.focus({ preventScroll: true });
     kick();
     return;
   }

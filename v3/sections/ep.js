@@ -127,11 +127,8 @@ export function mount(root, api) {
   }
 
   /* ------------------------------------------------------ the cases */
-  const cases = [];
   if (api.has3d) {
-    plan.forEach((s, i) => {
-      cases.push(api.addCase({ k: s.t.k, el: links[i], pose: s.pose, yaw: s.yaw, roll: s.roll * ROLL_SIGN, tilt: 0, z: s.kind === "lean" ? 2 : 0 }));
-    });
+    plan.forEach((s, i) => api.addCase({ k: s.t.k, el: links[i], pose: s.pose, yaw: s.yaw, roll: s.roll * ROLL_SIGN, tilt: 0, z: s.kind === "lean" ? 2 : 0 }));
   }
 
   /* ------------------------------------------------------- geometry */
@@ -172,9 +169,7 @@ export function mount(root, api) {
     plan.forEach((s, i) => { const e = edges(slots[i]); if (e.r > x && e.l < x + w && !seen.some((v) => v.n === s.t.vol.n)) seen.push(s.t.vol); });
     return seen;
   }
-  let shown = -1;
-  function caption_(i) {
-    shown = i;
+  function setCaption(i) {
     if (i < 0) {
       const vols = volumesInView();
       capWhere.textContent = vols.map((v) => `Vol. ${v.n}`).join(" and ");
@@ -189,11 +184,10 @@ export function mount(root, api) {
     capName.classList.remove("is-quiet");
   }
   let hovered = -1, focused = -1;
-  const recaption = () => caption_(hovered >= 0 ? hovered : focused);
+  const recaption = () => setCaption(hovered >= 0 ? hovered : focused);
   const indexOf = (node) => { const a = node instanceof Element ? node.closest(".ep-case") : null; return a ? Number(a.dataset.i) : -1; };
   track.addEventListener("pointerover", (e) => { const i = indexOf(e.target); if (i >= 0 && i !== hovered) { hovered = i; recaption(); } });
   track.addEventListener("pointerout", (e) => { if (indexOf(e.relatedTarget) !== hovered) { hovered = -1; recaption(); } });
-  track.addEventListener("focusin", (e) => { focused = indexOf(e.target); recaption(); });
   track.addEventListener("focusout", (e) => { if (!track.contains(e.relatedTarget)) { focused = -1; recaption(); } });
 
   /* ------------------------------------------------- keyboard: one stop */
@@ -216,7 +210,6 @@ export function mount(root, api) {
     links[j].focus({ preventScroll: true });
     show(slots[j]);
   });
-  track.addEventListener("focusin", (e) => { const i = indexOf(e.target); if (i >= 0 && i !== stop) setStop(i); });
 
   /* ------------------------------------------------------- focus mark */
   let marked = -1;
@@ -232,8 +225,18 @@ export function mount(root, api) {
     mark.style.top = `${r.bottom - b.top}px`;
     mark.style.width = `${Math.min(r.width, r.height * 0.16)}px`;
   }
-  track.addEventListener("focusin", (e) => { const i = indexOf(e.target); marked = i >= 0 && e.target.matches(":focus-visible") ? i : -1; placeMark(); });
   track.addEventListener("focusout", () => { marked = -1; placeMark(); });
+
+  // A case takes focus: it becomes the tab stop, the caption names it and,
+  // from the keyboard, the mark goes under it.
+  track.addEventListener("focusin", (e) => {
+    const i = indexOf(e.target);
+    if (i >= 0 && i !== stop) setStop(i);
+    focused = i;
+    recaption();
+    marked = i >= 0 && e.target.matches(":focus-visible") ? i : -1;
+    placeMark();
+  });
 
   /* ------------------------------------------------------------ hubs */
   function sync() {
@@ -259,7 +262,7 @@ export function mount(root, api) {
       const i = slots.findIndex((li) => fullyIn(li));
       if (i >= 0) setStop(i);
     }
-    if (hovered < 0 && focused < 0) caption_(-1);
+    if (hovered < 0 && focused < 0) setCaption(-1);
   }
   win.addEventListener("scroll", () => {
     sync();
@@ -284,8 +287,6 @@ export function mount(root, api) {
   } else bonus.classList.add("is-upright");
 
   sync();
-  caption_(-1);
+  setCaption(-1);
   kick();
-
-  return { cases };
 }
