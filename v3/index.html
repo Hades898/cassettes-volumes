@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23347e92'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="sections/picks.css">
 <link rel="stylesheet" href="sections/ep.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap">
@@ -85,7 +86,7 @@
 
   /* A tape's page, after Stripe Press's book pages: the case stands on the
      left, the page takes the tape's colours, and one column holds the rest. */
-  .tape-page { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 33rem); column-gap: clamp(32px, 6vw, 112px); padding: 150px var(--gutter) 120px; pointer-events: none; animation: rise 520ms 200ms ease both; }
+  .tape-page { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 33rem); column-gap: clamp(32px, 6vw, 112px); padding: 150px var(--gutter) 120px; pointer-events: none; }
   .tape-page .col { grid-column: 2; pointer-events: auto; display: flex; flex-direction: column; min-width: 0; }
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
   .where { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
@@ -273,14 +274,16 @@
   .site .util a, .site .util button { font: 300 15px/1 var(--font-ui); text-decoration: none; background: none; border: 0; padding: 4px 0; cursor: pointer; color: var(--ink); position: relative; }
   .site .util a.here::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 4px; height: 5px; background: var(--ink); transform: translateX(-50%); }
   .site .util nav.right a, .site .util nav.right button { border: 1px dashed var(--ink); padding: 4px 7px; }
-  .site .util a:hover, .site .util button:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-  .site .util nav.right a:hover, .site .util nav.right button:hover { text-decoration: none; background: var(--ink); color: var(--paper); }
+  @media (hover: hover) {
+    .site .util a:hover, .site .util button:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+    .site .util nav.right a:hover, .site .util nav.right button:hover { text-decoration: none; background: var(--ink); color: var(--paper); }
+  }
   .site .mark { display: block; height: 46px; aspect-ratio: var(--mark-ratio, 1.4); background: var(--ink); -webkit-mask: var(--mark) center / contain no-repeat; mask: var(--mark) center / contain no-repeat; }
   .site .sections { display: flex; justify-content: space-between; gap: 18px; padding: 9px var(--gutter) 10px; border-top: 1px solid var(--ink); overflow-x: auto; scrollbar-width: none; }
   .site .sections::-webkit-scrollbar { display: none; }
   .site .sections a { font: 300 15px/1.2 var(--font-ui); letter-spacing: 0.02em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
   .site .sections a[aria-current] { font-weight: 500; }
-  .site .sections a:hover { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
+  @media (hover: hover) { .site .sections a:hover { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; } }
 
   /* The Editor's Note: a teal sheet that drops from its link. */
   .note-panel { position: absolute; z-index: 6; top: calc(100% - 4px); left: calc(var(--gutter) + 60px); width: min(448px, calc(100vw - 2 * var(--gutter))); max-height: min(560px, calc(100svh - 120px)); overflow: auto; overscroll-behavior: contain; background: var(--teal); color: #fff; padding: 22px 26px 28px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); transform-origin: top left; animation: drop 260ms cubic-bezier(0.2, 0.7, 0.2, 1); }
@@ -300,33 +303,94 @@
   @media (min-width: 900px) { .hero .photo { background-image: image-set(url("assets/hero-2400.webp") 1x); } }
   .hero .photo::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.42); clip-path: polygon(0 0, 100% 0, 100% 67%, 0 100%); }
   .hero .photo::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 30%); }
-  /* The ring's links: each is moved over its case every frame. */
-  .rack { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; z-index: 2; }
-  .rack li { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-  .rack .slot { width: 100%; height: 100%; }
+  /* The ring's links: each is moved over its case every frame. The hero
+     takes a horizontal drag; a vertical one still scrolls the page. */
+  .hero { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .hero .about { user-select: text; -webkit-user-select: text; }
+  /* The list itself takes no pointer, or it would sit over the band's tabs;
+     only each case's link does. */
+  .rack { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; z-index: 2; pointer-events: none; }
+  .rack li { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: auto; }
+  .rack .slot { width: 100%; height: 100%; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
   .slot { display: block; color: transparent; text-decoration: none; font-size: 1px; overflow: hidden; }
-
   .hero .rack .slot { position: static; inset: auto; }
-  .band .title.swap > * { animation: band-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  .band .title.swap > :nth-child(2) { animation-delay: 40ms; }
-  .band .title.swap > :nth-child(3) { animation-delay: 80ms; }
-  @keyframes band-in { from { opacity: 0; transform: translateY(10px); } }
-  @media (prefers-reduced-motion: reduce) { .band .title.swap > * { animation: none; } }
+  .webgl-off .rack { position: static; display: flex; flex-wrap: wrap; gap: 8px; padding: 72px var(--gutter) 0; }
+  .webgl-off .rack li { position: static; width: auto; height: auto; }
+  /* The pool of shadow the ring stands in, and the chosen case's own. */
+  .hero .table, .hero .foot { position: absolute; z-index: 1; left: 0; top: 0; width: 0; height: 0; pointer-events: none; border-radius: 50%; }
+  .hero .table { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.42) 48%, rgba(0, 0, 0, 0) 100%); }
+  .hero .foot { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.3) 45%, rgba(0, 0, 0, 0) 100%); }
+  .webgl-off .hero .table, .webgl-off .hero .foot { display: none; }
 
-  /* The band: teal, on the slant, naming the chosen playlist. */
-  .band { position: absolute; z-index: 0; left: -6%; right: -6%; top: calc(var(--hh) * 0.69); height: calc(var(--hh) * 0.2); background: var(--teal); transform: rotate(-7deg); transform-origin: 50% 50%; color: #fff; display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) 1fr; align-items: center; padding: 0 calc(6% + var(--gutter)); }
-  .band .tags { display: flex; flex-wrap: wrap; gap: 4px 6px; max-width: 22rem; align-self: end; margin-bottom: 14%; }
-  .band .tags span { background: #fff; color: var(--teal); border: 1px solid #fff; padding: 2px 7px; font: 400 15px/1.15 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; box-shadow: inset 0 0 0 1.5px var(--teal); }
-  .band .title { text-align: center; }
+  /* The two sides, as tabs under the band's title: real buttons, and a
+     paper block that slides to the side the ring is showing. The pressed
+     tab names the side, so the title block carries no separate subline. */
+  .band .lead { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; align-self: center; }
+  .band .tabs { position: relative; display: inline-flex; vertical-align: top; }
+  .band .title .tabs { margin-top: 10px; }
+  .band .tabs button { position: relative; z-index: 1; appearance: none; background: none; border: 1px solid rgba(255, 255, 255, 0.85); margin-left: -1px; height: 36px; padding: 0 14px; font: 500 12px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; white-space: nowrap; cursor: pointer; transition: color 450ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .band .tabs button:first-child { margin-left: 0; }
+  .band .tabs button[aria-pressed="true"] { color: var(--teal); }
+  .band .tabs button:focus-visible { outline-color: #fff; }
+  @media (hover: hover) { .band .tabs button:not([aria-pressed="true"]):hover { background: rgba(255, 255, 255, 0.14); } }
+  .band .tabs .ind { position: absolute; z-index: 0; left: 0; top: 0; height: 100%; width: 0; background: #fff; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1), width 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+  /* The band: teal, on the slant, naming the chosen playlist. Each line
+     is a mask, exactly its own line box: the old text slides fully out of
+     it, then the new slides in, so no line is ever drawn over another. */
+  .band { position: absolute; z-index: 0; left: -6%; right: -6%; top: calc(var(--hh) * 0.69); height: max(calc(var(--hh) * 0.2), 146px); background: var(--teal); transform: rotate(-7deg); transform-origin: 50% 50%; color: #fff; display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) 1fr; align-items: center; padding: 0 calc(6% + var(--gutter)); }
+  .band::after { content: ""; position: absolute; z-index: -1; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .42 0 0 0 0 .38 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E"); mix-blend-mode: multiply; opacity: 0.55; pointer-events: none; }
+  .band .mask { position: relative; clip-path: inset(0); }
+  .band .mask > * { display: block; }
+  .band .mask > .leave { position: absolute; left: 0; right: 0; top: 0; }
+  /* A fixed width, so a row leaving the mask wraps the same as it did. */
+  .band .tags { width: min(22rem, 100%); }
+  .band .tags .row { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+  .band .tags .row > span { background: #fff; color: var(--teal); border: 1px solid #fff; padding: 2px 7px; font: 400 15px/1.15 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; box-shadow: inset 0 0 0 1.5px var(--teal); }
+  .band .title { grid-column: 2; grid-row: 1; text-align: center; }
   .band .title small { display: block; font: 300 15px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; }
   .band .title h2 { margin: 6px 0 4px; font: 400 clamp(2.4rem, 1.4rem + 3vw, 4.25rem)/0.92 var(--font-display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
-  .band .title .sub { display: block; font: 300 15px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; }
-  .band .meta { justify-self: end; display: flex; gap: 22px; font: 300 italic 1rem/1.25 var(--font-ui); }
+  .band .meta { grid-column: 3; grid-row: 1; justify-self: end; font: 300 italic 1rem/1.25 var(--font-ui); }
+  .band .meta .row { display: flex; gap: 22px; }
   .band .meta b { font-weight: 600; }
   .band .meta span { display: block; }
+
+  /* The hero's cursor, on a fine pointer only: a ring that shrinks over a
+     spine, and swells into a teal "Open" disc over the chosen case. It
+     lives outside the hero so it draws above the canvas. */
+  .hero-cur { position: fixed; z-index: 7; left: 0; top: 0; width: 58px; height: 58px; margin: -29px 0 0 -29px; pointer-events: none; display: none; will-change: transform; }
+  html.fine-pointer.home-on .hero-cur.on { display: block; }
+  html.fine-pointer.opening .hero-cur.on { display: none; }
+  html.fine-pointer .hero, html.fine-pointer .hero a, html.fine-pointer .hero button { cursor: none; }
+  .hero-cur i, .hero-cur b { position: absolute; border-radius: 50%; mix-blend-mode: difference; }
+  .hero-cur i { inset: 0; border: 1.5px solid #fff; transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1), mix-blend-mode 0s 400ms; }
+  .hero-cur b { left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  /* The label in the site's brown ink: 9:1 on the paper disc (teal was 3.9:1). */
+  .hero-cur span { position: absolute; inset: 0; display: grid; place-items: center; font: 500 12px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--brown); transform: scale(0); transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .hero-cur[data-st="spine"] i { transform: scale(0.72); }
+  .hero-cur[data-st="btn"] i { transform: scale(0.55); }
+  .hero-cur[data-st="btn"] b { transform: scale(0); }
+  .hero-cur[data-st="drag"] i { transform: scale(0.84); }
+  .hero-cur[data-st="open"] i { transform: scale(1.75); background: #f1ebe1; border-color: #f1ebe1; mix-blend-mode: normal; transition-delay: 0s; }
+  .hero-cur[data-st="open"] b { transform: scale(0); }
+  .hero-cur[data-st="open"] span { transform: scale(1); }
+
+  /* Opening a tape: a sheet in the tape's colour grows out of its case,
+     on the canvas; the page's text rises through masks inside it. */
+  html.opening canvas#scene { z-index: 7; }
+  html.opening .rack { visibility: hidden; }
+  html.opening .top { display: flex; z-index: 9; background: none; }
+  html.opening .top > * { pointer-events: none; }
+  html.opening .count { visibility: hidden; }
+  .tape-page.sheet { position: fixed; left: 0; right: 0; top: 0; z-index: 8; pointer-events: none; color: var(--on); }
+  .tape-page.sheet .col { pointer-events: none; }
+  .tape-page.arriving .m { overflow: hidden; }
+  .card .poster { display: block; width: min(76%, 22rem); height: auto; margin: 26px auto 0; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
   /* Three vertical zigzags above the band's high end, as the wireframe draws them. */
   .band .zig { position: absolute; right: calc(6% + var(--gutter) + 8px); top: -150px; width: 112px; height: 130px; background: url("assets/zigzag.svg") 0 0 / 112px 28px space; transform: rotate(90deg); transform-origin: center; opacity: 0.9; }
-  .hero .about { position: absolute; z-index: 2; right: var(--gutter); bottom: 22px; width: min(22rem, 40vw); margin: 0; color: var(--teal); font: 300 0.9375rem/1.45 var(--font-ui); text-wrap: pretty; }
+  .hero .about { position: absolute; z-index: 2; right: var(--gutter); bottom: 22px; width: min(22rem, 40vw); margin: 0; color: var(--teal); font: 300 0.9375rem/1.45 var(--font-ui); text-wrap: pretty; clip-path: inset(0); }
+  .hero .about > span { display: block; }
+  .hero .about > .leave { position: absolute; inset: 0 0 auto; padding: inherit; }
   .hero .about a { display: inline-block; margin-top: 8px; font: 500 11px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 3px; }
   .hero .wedge { position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: calc(100vw * 0.1228 + 24px); background: var(--paper); clip-path: polygon(0 100%, 100% 0, 100% 100%); }
 
@@ -346,6 +410,9 @@
 
   .webgl-off .slot, .no3d .slot { color: inherit; font: 400 12px/1.25 var(--font-ui); padding: 8px; border: 1px dashed currentColor; background: rgba(255, 255, 255, 0.08); }
   .webgl-off .rack .slot { color: #fff; }
+  /* The ring's link names are for the accessibility tree only (the case is
+     the picture); without WebGL they are the links' visible text. */
+  .webgl-off .rack .slot .sr { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
 
   @media (max-width: 760px) {
     :root { --site-h: 96px; }
@@ -357,9 +424,13 @@
     .site .sections { justify-content: flex-start; gap: 22px; }
     .hero { height: 760px; }
     .hero { --hh: 780px; --cw: calc((100vw - 24px) / 5.65); --dw: 44vw; --rt: 16px; --dt: 118px; }
-    .band { grid-template-columns: 1fr; top: 436px; height: 224px; transform: rotate(-7deg); padding: 18px calc(6% + 18px); gap: 8px; }
-    .band .tags { order: 3; margin: 0; align-self: center; }
-    .band .meta { order: 2; justify-self: center; }
+    .band { grid-template-columns: 1fr; top: 430px; height: 236px; transform: rotate(-7deg); padding: 14px calc(6% + 18px); gap: 8px; align-content: center; }
+    .band .lead, .band .title, .band .meta { grid-column: 1; grid-row: auto; }
+    .band .lead { order: 2; align-items: center; align-self: start; }
+    .band .tags .row { justify-content: center; }
+    .band .tabs button { height: 40px; padding: 0 12px; }
+    .band .meta { order: 3; justify-self: center; margin-top: 2px; }
+    .hero .wedge { height: 124px; clip-path: none; }
     .band .zig { display: none; }
     .hero .about { left: 0; right: 0; width: auto; bottom: 0; padding: 14px 16px 16px; background: var(--paper); }
     .note-panel { left: var(--gutter); }
@@ -424,14 +495,21 @@
     <div class="photo" role="img" aria-label="A dress made of film strips and photographic slides, worn at night"></div>
     <div class="wedge" aria-hidden="true"></div>
     <h1 class="sr" id="hero-title">Cassettes Vol. 01, Both Sides, Now: eight playlists</h1>
+    <i class="table" aria-hidden="true"></i><i class="foot" aria-hidden="true"></i>
     <ol class="rack" id="rack" aria-label="Vol. 01’s playlists: choose one"></ol>
     <div class="band" id="band">
-      <div class="tags" id="b-tags" aria-label="Forms and side"></div>
-      <div class="title"><small id="b-kick"></small><h2 id="b-name"></h2><span class="sub" id="b-sub"></span></div>
-      <div class="meta" id="b-meta"></div>
+      <div class="title">
+        <small class="mask" id="b-kick"></small><h2 class="mask" id="b-name"></h2>
+        <nav class="tabs" id="side-tabs" aria-label="Sides of Vol. 01">
+          <button type="button" data-side="A" aria-pressed="true">Side A · Clouds</button><button type="button" data-side="B" aria-pressed="false">Side B · Shores</button>
+          <i class="ind" aria-hidden="true"></i>
+        </nav>
+      </div>
+      <div class="lead"><div class="tags mask" id="b-tags" aria-label="Forms"></div></div>
+      <div class="meta mask" id="b-meta"></div>
       <i class="zig" aria-hidden="true"></i>
     </div>
-    <p class="about" id="b-about"></p>
+    <p class="about mask" id="b-about"></p>
   </section>
 
   <section class="submit" id="submissions" aria-label="Submissions">
@@ -448,6 +526,7 @@
   </footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="hero-cur" id="hero-cur" aria-hidden="true"><i></i><b></b><span>Open</span></div>
 <article class="tape-page" id="tape" hidden></article>
 <article class="reader" id="reader" hidden></article>
 
@@ -577,54 +656,116 @@ const tapeLabel = (t) => `Vol. ${t.vol.n}, Side ${t.side}${sideName(t) ? ` (${si
 // The rack holds Vol. 01's playlists; the chosen one hangs lower, nearer.
 const RACK = TAPES.flatMap((t, k) => (t.vol.n === "01" ? [k] : []));
 let sel = RACK[0], hoverK = -1, viaKeys = false;
+// Opening a tape from the hero grows a sheet out of its case (set up with
+// the scene); without the scene, or with reduced motion, the link just goes.
+let openSheet = () => false, closeSheet = () => false, finishSheet = () => {}, suppressClickUntil = 0;
 addEventListener("keydown", () => { viaKeys = true; }, true);
 addEventListener("pointerdown", () => { viaKeys = false; }, true);
 RACK.forEach((k) => {
   const t = TAPES[k];
-  listEl.append(h("li", {}, h("a", { class: "slot", href: `#/${t.key}`, "data-k": k, text: tapeLabel(t) })));
+  listEl.append(h("li", {}, h("a", { class: "slot", href: `#/${t.key}`, "data-k": k }, h("span", { class: "sr", text: tapeLabel(t) }))));
 });
+listEl.addEventListener("dragstart", (e) => e.preventDefault());
 // A first click on a hanging case chooses it; a click on the chosen one,
-// or Enter, opens it. Tabbing chooses as it goes.
+// or Enter, opens it. Tabbing chooses as it goes. A drag that ends on a
+// case is not a click.
 listEl.addEventListener("click", (e) => {
   const a = e.target.closest("a.slot"); if (!a) return;
   if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (performance.now() < suppressClickUntil) { e.preventDefault(); return; }
   const k = Number(a.dataset.k);
   if (k !== sel) { e.preventDefault(); choose(k); }
+  else if (openSheet(k)) e.preventDefault();
+});
+$("#b-about").addEventListener("click", (e) => {
+  const a = e.target.closest("a[href^='#/']"); if (!a) return;
+  if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (openSheet(sel)) e.preventDefault();
 });
 listEl.addEventListener("focusin", (e) => { const a = e.target.closest("a.slot"); if (a && viaKeys) choose(Number(a.dataset.k)); });
-// Arrow keys step through the playlists, round the ring.
+// Arrow keys step through the playlists, round the ring; Home and End go
+// to its first and last.
 listEl.addEventListener("keydown", (e) => {
-  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!step) return;
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  let i;
+  if (step) i = (RACK.indexOf(sel) + step + RACK.length) % RACK.length;
+  else if (e.key === "Home") i = 0;
+  else if (e.key === "End") i = RACK.length - 1;
+  else return;
   e.preventDefault();
-  const i = (RACK.indexOf(sel) + step + RACK.length) % RACK.length;
   listEl.children[i]?.firstChild.focus();
-  choose(RACK[i]);
+  choose(RACK[i], false, step ?? (i ? 1 : -1));
 });
 for (const [el, on] of [[listEl, "pointerover"], [listEl, "pointerout"]]) el.addEventListener(on, (e) => {
   const a = e.target.closest("a.slot");
   hoverK = on === "pointerover" && a ? Number(a.dataset.k) : -1; kick();
 });
-// Chosen by hand, the ring holds still a while before it turns again.
-let holdUntil = 0, bandK = -1;
-function choose(k, auto = false) {
+// The side tabs: each turns the ring to its side's first playlist, the
+// short way round; the teal block follows whichever side is at the front.
+const tabsEl = $("#side-tabs"), tabInd = $(".ind", tabsEl);
+function setTabs(side) {
+  for (const b of tabsEl.querySelectorAll("button")) {
+    const on = b.dataset.side === side;
+    b.setAttribute("aria-pressed", String(on));
+    if (on) { tabInd.style.width = `${b.offsetWidth}px`; tabInd.style.transform = `translateX(${b.offsetLeft}px)`; }
+  }
+}
+tabsEl.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-side]"); if (!b) return;
+  const k = RACK.find((x) => TAPES[x].side === b.dataset.side);
+  const N = RACK.length; let d = (((RACK.indexOf(k) - RACK.indexOf(sel)) % N) + N) % N; if (d > N / 2) d -= N;
+  choose(k, false, Math.sign(d) || 1);
+});
+document.fonts.ready.then(() => setTabs(TAPES[sel].side));
+// The band's lines slide through their masks, each mask exactly its own
+// line box: the new text comes up from below when the ring turns forward,
+// down from above when it turns back. The two steps never overlap in time:
+// the old line is fully out of its box (110% of the taller of its height
+// and the box's) before the new one starts in, so a mask never holds two
+// lines, and no line is ever drawn over its neighbour.
+const SLIDE = "cubic-bezier(0.2, 0.8, 0.2, 1)", LEAVE = "cubic-bezier(0.4, 0, 1, 1)", LEAVE_MS = 240;
+let bandLive = false;
+function slideIn(mask, node, dir, delay = 0) {
+  const old = [...mask.children].filter((c) => !c.classList.contains("leave"));
+  mask.append(node);
+  if (!bandLive || reduce) { for (const c of [...mask.children]) if (c !== node) c.remove(); return; }
+  for (const c of old) {
+    const from = getComputedStyle(c).transform;
+    const ty = from === "none" ? 0 : new DOMMatrixReadOnly(from).m42;
+    c.classList.add("leave"); c.setAttribute("aria-hidden", "true");
+    const h = c.offsetHeight, H = Math.max(h, mask.offsetHeight), out = H * 1.1;
+    // One still waiting below (or above) its box just goes.
+    if (Math.abs(ty) >= H) { c.remove(); continue; }
+    // The box keeps the old line's height until it is out, so a taller
+    // line is not cut short when a shorter one is appended.
+    if (h > mask.offsetHeight) { mask.style.minHeight = `${h}px`; setTimeout(() => { mask.style.minHeight = ""; }, LEAVE_MS); }
+    const to = -dir * out, ms = Math.round(LEAVE_MS * Math.min(1, Math.abs(to - ty) / out));
+    c.animate([{ transform: `translateY(${ty.toFixed(2)}px)` }, { transform: `translateY(${to.toFixed(2)}px)` }], { duration: ms, easing: LEAVE, fill: "both" }).onfinish = () => c.remove();
+  }
+  const H = Math.max(node.offsetHeight, mask.offsetHeight);
+  node.animate([{ transform: `translateY(${(dir * H * 1.1).toFixed(2)}px)` }, { transform: "translateY(0)" }], { duration: 520, delay: LEAVE_MS + delay, easing: SLIDE, fill: "both" });
+}
+// Chosen by hand, the ring holds still a while before it turns again, and
+// finishes its turn to the chosen case even under the pointer.
+let holdUntil = 0, bandK = -1, settling = false;
+function choose(k, auto = false, dir = 1) {
   if (!RACK.includes(k)) return;
-  if (!auto) holdUntil = performance.now() + 6000;
+  if (!auto) { holdUntil = performance.now() + 6000; settling = true; }
   if (k === bandK) return;
   sel = bandK = k;
-  const title = $("#band .title"); title.classList.remove("swap"); void title.offsetWidth; title.classList.add("swap");
-  const t = TAPES[k], side = sideName(t), forms = [...new Set(t.slugs.map((s) => PIECES[s].form))];
+  const t = TAPES[k], forms = [...new Set(t.slugs.map((s) => PIECES[s].form))];
   for (const a of listEl.querySelectorAll("a.slot")) a.toggleAttribute("aria-current", Number(a.dataset.k) === k);
-  $("#b-kick").textContent = `Playlist ${two(numOf(t))}`;
-  $("#b-name").textContent = t.name;
-  $("#b-sub").textContent = side ? `Side ${t.side} · ${side}` : `Side ${t.side}`;
-  $("#b-tags").replaceChildren(...[...forms, side].filter(Boolean).map((x) => h("span", { text: x })));
-  $("#b-meta").replaceChildren(
+  slideIn($("#b-kick"), h("span", { text: `Playlist ${two(numOf(t))}` }), dir, 0);
+  slideIn($("#b-name"), h("span", { text: t.name }), dir, 40);
+  slideIn($("#b-tags"), h("span", { class: "row" }, forms.map((x) => h("span", { text: x }))), dir, 60);
+  slideIn($("#b-meta"), h("span", { class: "row" },
     h("span", {}, "Vol.", h("b", { text: t.vol.n })),
     h("span", {}, "Side ", h("b", { text: t.side })),
-    h("span", {}, "Playlist ", h("b", { text: two(numOf(t)) })));
-  $("#b-about").replaceChildren(
+    h("span", {}, "Playlist ", h("b", { text: two(numOf(t)) }))), dir, 20);
+  slideIn($("#b-about"), h("span", {},
     `${t.vol.title}. ${t.slugs.map((s) => `${PIECES[s].en[0]}: ${PIECES[s].en[1].replace(/\.$/, "")}.`).join(" ")} `,
-    h("a", { href: `#/${t.key}`, text: "Open the playlist →" }));
+    h("a", { href: `#/${t.key}`, text: "Open the playlist →" })), dir, 100);
+  setTabs(t.side);
   kick();
 }
 
@@ -670,7 +811,8 @@ $("#note-body").replaceChildren(...NOTE.map((p) => h("p", { text: p })),
 // The submissions belt: the line, again and again.
 for (const run of [$("#run"), $("#run2")]) for (let i = 0; i < 4; i++) run.append(h("span", { text: "Submissions opening soon" }), h("i"));
 
-// The ring turns; ringPhase is where it stands, in cases.
+// The ring turns; ringPhase is where it stands, in cases. The cases stand
+// spines out, like a revolving tower.
 const heroEl = $("#volumes");
 let ringPhase = RACK.indexOf(sel);
 
@@ -730,15 +872,67 @@ function renderTape(t, k) {
     art ? h("p", { class: "fine", text: WORKSHOP }) : null,
     h("a", { class: "next", href: `#/${next.key}` }, h("small", { text: "Next tape" }), h("b", { text: next.name }), h("span", { text: `${next.vol.title} · ${tag(next)}` })),
     h("p", { class: "fine", text: "Prototype. Names and texts are the website's samples, except “A Horror Tale”: four real posters, credited as printed on them." }));
+  // Each line in its own mask, so the page can rise line by line.
+  for (const c of [...col.children]) col.append(h("div", { class: "m" }, c));
   tapeEl.replaceChildren(col);
   tapeEl.style.setProperty("--ground", t.ground);
   tapeEl.style.setProperty("--accent", t.accent);
 }
+// The page's lines rise out of their masks, one after another. A line's
+// mask holds its margins too, so "out" is measured to the mask's bottom
+// edge, not to the line's own height: no glyph top is left in the mask.
+let riseTimer = 0;
+const maskOut = (el) => el.parentElement.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 2;
+function riseText(delay0 = 0) {
+  if (reduce) return;
+  clearTimeout(riseTimer);
+  tapeEl.classList.add("arriving");
+  const items = [...tapeEl.querySelectorAll(".col > .m > *")];
+  items.forEach((el, i) => {
+    const thin = el.offsetHeight < 6;
+    for (const an of el.getAnimations()) an.cancel();
+    if (thin) el.style.transformOrigin = "0 50%";
+    el.animate(thin ? [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }] : [{ transform: `translateY(${maskOut(el).toFixed(1)}px)` }, { transform: "translateY(0)" }], { duration: 900, delay: delay0 + Math.min(i, 9) * 75, easing: SLIDE, fill: "backwards" });
+  });
+  riseTimer = setTimeout(() => tapeEl.classList.remove("arriving"), delay0 + 9 * 75 + 950);
+}
+// The poster, printed on its paper: the image shows through a mask of
+// seven ink blots whose edges are roughened by turbulence. Armed, the
+// blots grow once the print is in view; otherwise it is already there.
+const svg = (tag2, props = {}, ...kids) => { const el = document.createElementNS("http://www.w3.org/2000/svg", tag2); for (const [k, v] of Object.entries(props)) el.setAttribute(k, v); el.append(...kids); return el; };
+const BLOTS = [[268, 440, 0], [608, 800, 120], [447, 160, 220], [161, 1013, 300], [716, 333, 360], [465, 1147, 420], [411, 627, 180]];
+let inkArmed = false;
 function posterCard(t) {
   const p = POSTERS.find((x) => x.n === t.art.poster);
+  const circles = BLOTS.map(([cx, cy]) => svg("circle", { cx, cy, r: inkArmed && !reduce ? 0 : 1400, fill: "#fff" }));
+  const art = svg("svg", { class: "poster", viewBox: "0 0 848 1200", role: "img", "aria-label": `${p.en}, a risograph poster by ${p.by}.` },
+    svg("defs", {},
+      svg("filter", { id: "ink-f", x: "-30%", y: "-30%", width: "160%", height: "160%" },
+        svg("feTurbulence", { type: "fractalNoise", baseFrequency: "0.011", numOctaves: "3", seed: "7" }),
+        svg("feDisplacementMap", { in: "SourceGraphic", scale: "160", xChannelSelector: "R", yChannelSelector: "G" })),
+      svg("mask", { id: "ink-m", maskUnits: "userSpaceOnUse", x: "-400", y: "-400", width: "1648", height: "2000" }, svg("g", { filter: "url(#ink-f)" }, ...circles))),
+    svg("rect", { width: "848", height: "1200", fill: t.art.paper }),
+    svg("image", { href: `assets/p${p.n}-1200.webp`, width: "848", height: "1200", mask: "url(#ink-m)" }));
+  if (inkArmed && !reduce) {
+    inkArmed = false;
+    const run = () => {
+      const t0 = performance.now() + 120;
+      const step = (now) => {
+        let more = false;
+        // Each blot grows to 680 (enough, with the turbulence, to reach the
+        // corners) over 1.5 s, slow at both ends like ink soaking in: the
+        // print is whole after about 1.8 s.
+        circles.forEach((c, i) => { const q = clamp((now - t0 - BLOTS[i][2]) / 1500, 0, 1); c.setAttribute("r", (680 * q * q * (3 - 2 * q)).toFixed(1)); if (q < 1) more = true; });
+        if (more) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); run(); } }, { threshold: 0.12 });
+    setTimeout(() => io.observe(art), 520);
+  }
   return h("figure", { class: "card" },
     h("a", { class: "open", href: `#/${t.key}/a-horror-tale` }, "View the posters ", h("span", { "aria-hidden": "true", text: "↗" })),
-    h("img", { src: `assets/p${p.n}-1200.webp`, width: "848", height: "1200", alt: `${p.en}, a risograph poster by ${p.by}.`, loading: "lazy" }),
+    art,
     h("figcaption", { text: `${p.en} (${p.ar}), by ${p.by}. One of four.` }));
 }
 function excerptCard(t, p) {
@@ -1039,6 +1233,9 @@ if (renderer) {
   const rim = new THREE.DirectionalLight(0xfff0e0, 0.7); rim.position.set(500, 300, -500); scene.add(rim);
   const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(200, -700, 600); scene.add(fill);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x3a3029, 0.85); scene.add(hemi);
+  // Layer 1 holds the opening sheet and the case riding in it, drawn over
+  // everything else; the lights shine on both.
+  for (const l of [key, rim, fill, hemi]) l.layers.enableAll();
   const FOV = 30;
   camera = new THREE.PerspectiveCamera(FOV, 1, 10, 8000);
 
@@ -1147,6 +1344,22 @@ if (renderer) {
   function backCanvas(t, s) {
     const c = document.createElement("canvas"); c.width = Math.round(1120 * s); c.height = Math.round(1760 * s);
     const g = c.getContext("2d"); g.scale(s, s);
+    // Seen small, on the ring, the back carries only what reads at a
+    // glance; the full list is drawn once the case is open.
+    if (s < 1) {
+      const fg = t.art ? t.art.red : onColour(t.colour);
+      g.fillStyle = t.art ? t.art.paper : deeper(t.colour, 0.86); g.fillRect(0, 0, 1120, 1760); grain(g, 1120, 1760, t.art ? 0.06 : 0.08);
+      g.fillStyle = fg; g.strokeStyle = fg; g.textBaseline = "alphabetic";
+      g.font = '500 44px "IBM Plex Mono"'; g.fillText(`SIDE ${t.side}  ·  ${tag(t)}`, 80, 150);
+      g.lineWidth = 3; g.beginPath(); g.moveTo(80, 200); g.lineTo(1040, 200); g.stroke();
+      if (t.art) { g.font = '400 140px "IBM Plex Sans Arabic"'; g.textAlign = "right"; g.direction = "rtl"; g.fillText("حدوتة تخوف", 1040, 420); g.direction = "ltr"; g.textAlign = "left"; }
+      g.font = 'italic 400 168px "Instrument Serif"'; wrapText(g, t.art ? "A Horror Tale" : t.name, 80, t.art ? 640 : 440, 960, 160);
+      g.font = '400 56px "IBM Plex Mono"'; g.fillText(t.art ? "FOUR POSTERS · RISOGRAPH" : `${t.slugs.length} PIECES`, 80, t.art ? 820 : 1000);
+      g.font = '400 76px "Instrument Serif"'; g.fillText(t.vol.title, 80, 1540);
+      const mark = lettering(fg);
+      if (mark) { const mh = 150, mw = (mark.width / mark.height) * mh; g.drawImage(mark, 1040 - mw, 1530, mw, mh); }
+      return c;
+    }
     if (t.art) {
       // The poster's own margins: cream paper, riso red, both languages.
       g.fillStyle = t.art.paper; g.fillRect(0, 0, 1120, 1760); grain(g, 1120, 1760, 0.06);
@@ -1212,7 +1425,7 @@ if (renderer) {
     };
     const paper = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.8, metalness: 0, bumpMap: grainTex, bumpScale: 0.25 });
     const front = paper(faceTex(frontCanvas(t, LO))), back = paper(faceTex(backCanvas(t, LO)));
-    const edge = new THREE.MeshStandardMaterial({ color: new THREE.Color(deeper(t.colour, 0.9)), roughness: 0.75, bumpMap: grainTex, bumpScale: 0.2 });
+    const edge = new THREE.MeshStandardMaterial({ color: new THREE.Color(deeper(t.colour, 0.72)), roughness: 0.85, bumpMap: grainTex, bumpScale: 0.2 });
     const mesh = new THREE.Mesh(geo, [edge, edge, front, back, spine, edge]);
     const g = new THREE.Group(); g.add(mesh); scene.add(g);
     g.userData = { t, k, mesh, front, back, hi: null, hover: 0, open: 0, away: 0, side: -1, turn: 0, px: 0, py: 0 };
@@ -1282,18 +1495,27 @@ if (renderer) {
   listEl.addEventListener("focusout", () => { focused = -1; kick(); });
 
   const ring = $("#ring"), corner = new THREE.Vector3();
+  // A case's box on screen, from its eight corners; `phi` reads it in a
+  // frame turned anticlockwise by phi, for the sheet that leans with it.
+  function screenBox(m, out, phi = 0) {
+    m.updateWorldMatrix(true, false);
+    const cs = Math.cos(phi), sn = Math.sin(phi);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      corner.set(i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, i & 4 ? 0.5 : -0.5).applyMatrix4(m.matrixWorld).project(camera);
+      const sx = ((corner.x + 1) / 2) * W, sy = ((1 - corner.y) / 2) * H;
+      const x = sx * cs - sy * sn, y = sx * sn + sy * cs;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    out.x0 = x0; out.y0 = y0; out.x1 = x1; out.y1 = y1; return out;
+  }
+  const fbox = { x0: 0, y0: 0, x1: 0, y1: 0 };
   function drawRing() {
     const k = opened < 0 && keyboard ? focused : -1;
     ring.hidden = k < 0;
     if (k < 0) return;
-    const m = tapes[k].userData.mesh; m.updateWorldMatrix(true, false);
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = 0; i < 4; i++) {
-      corner.set(i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, 0.5).applyMatrix4(m.matrixWorld).project(camera);
-      const x = ((corner.x + 1) / 2) * W, y = ((1 - corner.y) / 2) * H;
-      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
-    }
-    ring.style.transform = `translate(${x0}px, ${y0}px)`; ring.style.width = `${x1 - x0}px`; ring.style.height = `${y1 - y0}px`;
+    const b = screenBox(tapes[k].userData.mesh, fbox);
+    ring.style.transform = `translate(${b.x0}px, ${b.y0}px)`; ring.style.width = `${b.x1 - b.x0}px`; ring.style.height = `${b.y1 - b.y0}px`;
   }
 
   // The open tape's J-card at full size; the others keep the small one.
@@ -1792,6 +2014,206 @@ if (renderer) {
     camera.position.set(0, 0, camZ); camera.rotation.set(0, 0, 0); camera.updateMatrixWorld();
   };
 
+  /* --------------------------------------------- v3: the opening sheet */
+  // A click on the chosen case grows a sheet of paper out of it: a plane
+  // in the scene, first in the J-card's colour, settling to the page's
+  // ground as it fills the screen; it leans with the case and straightens.
+  // The case rides inside it to where it stands on the tape's page, and the
+  // page's text rises through masks. Back shrinks it to the ring again.
+  const bezier = (x1, y1, x2, y2) => {
+    const A = (a, b2) => 1 - 3 * b2 + 3 * a, B = (a, b2) => 3 * b2 - 6 * a, C = (a) => 3 * a;
+    const at = (t, a, b2) => ((A(a, b2) * t + B(a, b2)) * t + C(a)) * t;
+    const slope = (t, a, b2) => 3 * A(a, b2) * t * t + 2 * B(a, b2) * t + C(a);
+    return (x) => {
+      if (x <= 0) return 0; if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 10; i++) { const s = slope(t, x1, x2); if (Math.abs(s) < 1e-6) break; t = clamp(t - (at(t, x1, x2) - x) / s, 0, 1); }
+      return at(t, y1, y2);
+    };
+  };
+  const SHEET_EASE = bezier(0.76, 0, 0.18, 1), LEAN = 4.5 * (Math.PI / 180), SHEET_Z = -90;
+  const sstep = (x) => x * x * (3 - 2 * x);
+  const sheetMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+  const sheetMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), sheetMat);
+  sheetMesh.visible = false; sheetMesh.layers.set(1); scene.add(sheetMesh);
+  const sheetA = new THREE.Color(), sheetB = new THREE.Color();
+  let sheet = null;
+  const sbox = { x0: 0, y0: 0, x1: 0, y1: 0 }, topEl = $(".top");
+  function sheetable() { return !reduce && !sheet && !play; }
+  openSheet = (k) => {
+    if (!sheetable() || opened >= 0 || !tapes[k]) return false;
+    const t = TAPES[k];
+    inkArmed = true;
+    if (tapeEl.dataset.key !== t.key || t.art) { renderTape(t, k); tapeEl.dataset.key = t.key; }
+    inkArmed = false;
+    tapeEl.hidden = false; tapeEl.style.top = "0px"; tapeEl.classList.add("sheet");
+    up.hidden = false;
+    document.documentElement.classList.add("opening");
+    layoutOpen();
+    sharpen(tapes[k], true);
+    tapes[k].userData.mesh.layers.set(1);
+    sheetA.set(t.colour); sheetB.set(t.ground);
+    groundNow.set(t.ground); groundTo.set(t.ground);
+    sheetMesh.visible = true;
+    sheet = { mode: "open", k, t0: performance.now(), dur: 1050, ty: 0 };
+    settling = true; holdUntil = Infinity;
+    riseText(620);
+    kick();
+    return true;
+  };
+  closeSheet = (k, ty) => {
+    if (!sheetable() || !tapes[k] || tapeEl.dataset.key !== TAPES[k].key) return false;
+    const t = TAPES[k];
+    clearTimeout(riseTimer);
+    tapeEl.hidden = false; tapeEl.style.top = `${-ty}px`; tapeEl.classList.add("sheet", "arriving");
+    up.hidden = false;
+    document.documentElement.classList.add("opening");
+    [...tapeEl.querySelectorAll(".col > .m > *")].forEach((el, i) => {
+      for (const an of el.getAnimations()) an.cancel();
+      const thin = el.offsetHeight < 6;
+      // All out within the 300ms before the sheet starts to shrink.
+      el.animate(thin ? [{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }] : [{ transform: "translateY(0)" }, { transform: `translateY(${maskOut(el).toFixed(1)}px)` }], { duration: 220, delay: Math.min(i, 9) * 8, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    });
+    tapes[k].userData.mesh.layers.set(1);
+    // grow runs 1 → 0 here: the sheet starts as the page's ground and is
+    // the J-card's colour by the time it reaches the case.
+    sheetA.set(t.colour); sheetB.set(t.ground);
+    sheetMesh.visible = true; clearA = 0;
+    sheet = { mode: "close", k, t0: performance.now() + 300, dur: 850, ty };
+    settling = true;
+    kick();
+    return true;
+  };
+  finishSheet = () => {
+    if (!sheet) return null;
+    const s = sheet; sheet = null;
+    tapes[s.k].userData.mesh.layers.set(0); tapes[s.k].userData.raw = false;
+    sheetMesh.visible = false;
+    tapeEl.classList.remove("sheet"); tapeEl.style.top = ""; tapeEl.style.clipPath = ""; tapeEl.style.transform = ""; tapeEl.style.transformOrigin = "";
+    topEl.style.clipPath = ""; topEl.style.transform = ""; topEl.style.transformOrigin = "";
+    document.documentElement.classList.remove("opening");
+    if (s.mode === "close") {
+      tapeEl.hidden = true; tapeEl.classList.remove("arriving"); up.hidden = true; holdUntil = performance.now() + 6000;
+      // The rack was hidden while the sheet shrank, which drops the focus
+      // the route gave its case; put it back unless it has gone elsewhere.
+      const ae = document.activeElement;
+      if (!ae || ae === document.body || ae === up) listEl.children[RACK.indexOf(s.k)]?.firstChild?.focus({ preventScroll: true });
+    } else clearA = 1;
+    kick();
+    return s.mode;
+  };
+  // Each frame of a sheet: the case's box, leaning with it, grown toward
+  // the screen (or back); the plane and the page's clip follow it.
+  function stepSheet(now) {
+    const s = sheet, u = tapes[s.k].userData;
+    const p = clamp((now - s.t0) / s.dur, 0, 1), b = SHEET_EASE(p);
+    const grow = s.mode === "open" ? b : 1 - b;
+    u.open = grow; u.raw = true;
+    const phi = LEAN * (1 - grow);
+    screenBox(u.mesh, sbox, phi);
+    const cs = Math.cos(phi), sn = Math.sin(phi);
+    const pad = 4 + 10 * grow;
+    const fx = (W / 2) * cs - (H / 2) * sn, fy = (W / 2) * sn + (H / 2) * cs;
+    const cx = ((sbox.x0 + sbox.x1) / 2) * (1 - grow) + fx * grow, cy = ((sbox.y0 + sbox.y1) / 2) * (1 - grow) + fy * grow;
+    // Opening, the sheet reaches its full size ahead of its place, so it
+    // covers the corners of the screen (the home header's white edge)
+    // before it looks full; closing, it shrinks in step as before.
+    const gs = s.mode === "open" ? Math.min(1, grow * 1.4) : grow;
+    const bw = (sbox.x1 - sbox.x0 + pad * 2) * (1 - gs) + W * 1.3 * gs, bh = (sbox.y1 - sbox.y0 + pad * 2) * (1 - gs) + H * 1.3 * gs;
+    // Back to screen space, then to the plane's depth.
+    const ox = cx * cs + cy * sn, oy = -cx * sn + cy * cs;
+    const f = (camZ - SHEET_Z) / camZ;
+    sheetMesh.position.set((ox - W / 2) * f, (H / 2 - oy) * f, SHEET_Z);
+    sheetMesh.scale.set(bw * f, bh * f, 1);
+    sheetMesh.rotation.z = phi;
+    sheetMat.color.copy(sheetA).lerp(sheetB, sstep(clamp(grow * 1.25, 0, 1)));
+    // The page's text, clipped to the same sheet.
+    const ty = s.ty, eh = tapeEl.offsetHeight || H;
+    tapeEl.style.transformOrigin = `${ox.toFixed(1)}px ${(oy + ty).toFixed(1)}px`;
+    tapeEl.style.transform = phi ? `rotate(${(-phi).toFixed(4)}rad)` : "";
+    tapeEl.style.clipPath = `inset(${Math.max(0, oy + ty - bh / 2).toFixed(1)}px ${Math.max(0, W - (ox + bw / 2)).toFixed(1)}px ${Math.max(0, eh - (oy + ty + bh / 2)).toFixed(1)}px ${Math.max(0, ox - bw / 2).toFixed(1)}px)`;
+    const th = topEl.offsetHeight || 80;
+    topEl.style.transformOrigin = `${ox.toFixed(1)}px ${oy.toFixed(1)}px`;
+    topEl.style.transform = phi ? `rotate(${(-phi).toFixed(4)}rad)` : "";
+    topEl.style.clipPath = `inset(${Math.max(0, oy - bh / 2).toFixed(1)}px ${Math.max(0, W - (ox + bw / 2)).toFixed(1)}px ${Math.max(0, th - (oy + bh / 2)).toFixed(1)}px ${Math.max(0, ox - bw / 2).toFixed(1)}px)`;
+    if (p >= 1 && !s.done) {
+      s.done = true;
+      if (s.mode === "open") location.hash = `#/${TAPES[s.k].key}`;
+      else finishSheet();
+    }
+  }
+
+  /* ------------------------------------------------ v3: the hero's input */
+  // Drag turns the ring and lets go with the hand's speed; a sideways wheel
+  // or trackpad turns it too, while an up-and-down one scrolls the page.
+  let manual = null, fling = 0, drag = null, ringPer = 350;
+  const vel = [];
+  function endManual(withFling) {
+    if (!manual) return;
+    manual = null;
+    if (withFling) {
+      const now = performance.now();
+      const old = vel.find((v) => now - v.t < 120) ?? vel.at(-1);
+      const last = vel.at(-1);
+      let v = old && last && last.t > old.t ? ((last.p - old.p) / (last.t - old.t)) * 1000 : 0;
+      v = clamp(v, -4, 4);
+      fling = Math.abs(v) > 0.35 ? v : 0;
+    }
+    vel.length = 0;
+    if (!fling) settling = true;
+    holdUntil = performance.now() + 6000;
+    kick();
+  }
+  heroEl.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || sheet || opened >= 0 || play) return;
+    if (e.target.closest(".tabs, .about")) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, p0: manual ? manual.target : ringPhase, on: false };
+  });
+  heroEl.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.on) {
+      if (Math.abs(dx) < 5 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+      drag.on = true; fling = 0; settling = false;
+      try { heroEl.setPointerCapture(e.pointerId); } catch {}
+      manual = { target: drag.p0, until: 0 };
+    }
+    manual.target = drag.p0 - dx / ringPer;
+    vel.push({ p: manual.target, t: performance.now() }); if (vel.length > 12) vel.shift();
+    kick();
+  });
+  const endDrag = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const was = drag; drag = null;
+    if (!was.on) return;
+    suppressClickUntil = performance.now() + 300;
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("a.slot");
+    hoverK = under ? Number(under.dataset.k) : -1;
+    endManual(e.type === "pointerup");
+  };
+  heroEl.addEventListener("pointerup", endDrag);
+  heroEl.addEventListener("pointercancel", endDrag);
+  heroEl.addEventListener("wheel", (e) => {
+    if (sheet || opened >= 0 || play || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    if (!manual) { manual = { target: ringPhase, until: 0 }; fling = 0; settling = false; }
+    manual.target += e.deltaX / (ringPer * 0.7);
+    manual.until = performance.now() + 160;
+    kick();
+  }, { passive: false });
+
+  // The cursor: it trails the pointer, and reads what is under it.
+  const curEl = $("#hero-cur"), fine = matchMedia("(hover: hover) and (pointer: fine)").matches && !reduce;
+  const cur = { x: 0, y: 0, on: false, btn: false };
+  if (fine) {
+    document.documentElement.classList.add("fine-pointer");
+    heroEl.addEventListener("pointerenter", (e) => { cur.on = true; cur.x = e.clientX; cur.y = e.clientY; curEl.classList.add("on"); kick(); });
+    heroEl.addEventListener("pointerleave", () => { cur.on = false; curEl.classList.remove("on"); curEl.dataset.st = ""; });
+    heroEl.addEventListener("pointerover", (e) => { cur.btn = !!e.target.closest(".tabs button, .about a"); });
+  }
+  let frontK = -1, frontO = 0, tiltX = 0, tiltY = 0;
+  const tableEl = $(".hero .table"), footEl = $(".hero .foot");
+
   /* ----------------------------------------- v3: cases anywhere on home */
   // The rack's cases stay muted until chosen: a saturation uniform on each
   // of a hanging case's materials, mixed toward grey in the shader. Copies
@@ -1800,14 +2222,14 @@ if (renderer) {
   const baseMats = tapes.map((g) => g.userData.mesh.material.map((m) => ({ m, hook: m.onBeforeCompile })));
   tapes.forEach((g) => {
     const u = g.userData;
-    u.sat = { value: RACK.includes(u.k) ? 0.22 : 1 };
+    u.sat = { value: RACK.includes(u.k) ? 0.22 : 1 }; u.dim = { value: 1 }; u.o = 0;
     for (const m of new Set(u.mesh.material)) {
       const prev = m.onBeforeCompile;
       m.onBeforeCompile = (s, r) => {
         prev?.call(m, s, r);
-        s.uniforms.uSat = u.sat;
-        s.fragmentShader = "uniform float uSat;\n" + s.fragmentShader.replace("#include <map_fragment>",
-          "#include <map_fragment>\n  diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, uSat);");
+        s.uniforms.uSat = u.sat; s.uniforms.uDim = u.dim;
+        s.fragmentShader = "uniform float uSat; uniform float uDim;\n" + s.fragmentShader.replace("#include <map_fragment>",
+          "#include <map_fragment>\n  diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, uSat) * uDim;");
       };
       m.customProgramCacheKey = () => "sat|" + (prev ? prev.toString() : "");
       m.needsUpdate = true;
@@ -1917,7 +2339,7 @@ if (renderer) {
   }
   // The sections plug in here once the scene is ready (sections/CONTRACT.md).
   resizeProps = () => { for (const p of props) if (p.kind === "case") p.g.children[0].scale.copy(tapes[p.k].userData.mesh.scale); };
-  let raf = 0, last = 0, nearest = -1, shownNearest = -2;
+  let raf = 0, last = 0, nearest = -1, shownNearest = -2, resumeTimer = 0;
   kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
   function frame(now) {
     raf = 0;
@@ -1934,39 +2356,79 @@ if (renderer) {
     renderer.setClearColor(groundNow, clearA);
     const tp = play ? Math.max(0, (performance.now() - play.t0) / 1000) : 0;
     // The ring: Vol. 01's playlists stand on a circle seen from a little
-    // above, the chosen one at the front, nearest and largest; choosing
+    // above, spines out like a revolving tower; the one at the front pulls
+    // out, turns to show its J-card and leans toward the pointer. Choosing
     // another turns the ring the short way round until it comes forward.
     let ringC = null, heroR = null;
     if (home) {
       heroR = heroEl.getBoundingClientRect();
-      const hh = heroR.height, mob = mobile(), N = RACK.length, goal = RACK.indexOf(sel);
-      // It turns all the time, a case every six seconds or so, and the one
-      // passing the front becomes the chosen one; a pointer over any case,
-      // a choice by hand, or the hero off screen stops it, on the nearest.
-      // A case under the pointer freezes it on the spot, so the case stays
-      // under the pointer; the turn eases back in once the pointer leaves.
-      const held = hoverK >= 0;
-      const turning = !reduce && heroR.bottom > 0 && heroR.top < H && !held && performance.now() > holdUntil && !document.hidden && opened < 0 && !play;
-      spinV = held ? 0 : near(spinV, turning ? 0.16 : 0, 0.035, 1e-4);
-      if (held) { /* stays where it stopped */ }
-      else if (spinV > 2e-3) {
-        ringPhase = (ringPhase + (spinV * dt) / 1000) % N; busy = true;
-        const front = ((Math.round(ringPhase) % N) + N) % N;
-        if (RACK[front] !== sel) choose(RACK[front], true);
-      } else {
-        let d = (((goal - ringPhase) % N) + N) % N; if (d > N / 2) d -= N;
-        if (Math.abs(d) > 1e-3) { ringPhase = (((ringPhase + d * a(0.085)) % N) + N) % N; busy = true; } else ringPhase = goal;
-        if (turning) busy = true;
+      const hh = heroR.height, mob = mobile(), N = RACK.length;
+      // A tight tower: the ring is a true circle (rz = rx) just wide enough
+      // that the cases' inner ends clear each other, seen from about 12°
+      // above (rv), so the neighbours' faces fill the gaps between spines.
+      const rx = mob ? Math.min(heroR.width * 0.3, hh * 0.25) : Math.min(heroR.width * 0.15, hh * 0.27);
+      ringC = { N, hh, x: heroR.left + heroR.width / 2, y: heroR.top + scrollY + hh * (mob ? 0.335 : 0.345), rx, rv: rx * 0.22, rz: rx, ch: hh * (mob ? 0.17 : 0.28), front: hh * (mob ? 0.3 : 0.41) };
+      // The turntable: a pool of shadow under the cases' feet.
+      const tw = (rx + ringC.ch * 0.4) * 2, tht = (ringC.rv + ringC.ch * 0.1) * 2, tcx = ringC.x - heroR.left, tcy = ringC.y - scrollY - heroR.top + ringC.ch * 0.5 + 6;
+      tableEl.style.cssText = `left:${(tcx - tw / 2).toFixed(0)}px;top:${(tcy - tht / 2).toFixed(0)}px;width:${tw.toFixed(0)}px;height:${tht.toFixed(0)}px`;
+      ringPer = (2 * Math.PI * rx) / N;
+      const wrapN = (v) => ((v % N) + N) % N, nearestK = () => RACK[wrapN(Math.round(ringPhase))];
+      // Under the hand (a drag, or a sideways wheel) the ring follows it;
+      // let go, it runs on with the hand's speed and settles on the nearest.
+      if (manual) {
+        if (manual.until && now > manual.until) endManual(false);
+        else { const before = ringPhase; ringPhase = near(ringPhase, manual.target, 0.3, 5e-4); if (nearestK() !== sel) choose(nearestK(), true, Math.sign(ringPhase - before) || 1); busy = true; }
       }
-      ringC = { N, x: heroR.left + heroR.width / 2, y: heroR.top + scrollY + hh * (mob ? 0.27 : 0.31), rx: Math.min(heroR.width * (mob ? 0.34 : 0.31), hh * 0.72), rv: hh * (mob ? 0.12 : 0.14), rz: Math.min(heroR.width * 0.12, 180), ch: hh * (mob ? 0.19 : 0.28), front: hh * (mob ? 0.36 : 0.41) };
+      if (!manual && fling) {
+        ringPhase += (fling * dt) / 1000; fling *= Math.exp(-dt / 340); busy = true;
+        if (nearestK() !== sel) choose(nearestK(), true, Math.sign(fling));
+        if (Math.abs(fling) < 0.22) { fling = 0; settling = true; }
+      }
+      if (!manual && !fling) {
+        // It turns all the time, a case every six seconds or so, and the
+        // one passing the front becomes the chosen one. A case under the
+        // pointer freezes it on the spot, so the case stays under the
+        // pointer; a choice by hand, or the hero off screen, stops it.
+        const goal = RACK.indexOf(sel);
+        const held = (hoverK >= 0 && !settling) || !!sheet;
+        const turning = !reduce && heroR.bottom > 0 && heroR.top < H && !held && !settling && now > holdUntil && !document.hidden && opened < 0 && !play;
+        spinV = held || settling ? 0 : near(spinV, turning ? 0.16 : 0, 0.035, 1e-4);
+        if (spinV > 2e-3) {
+          ringPhase = wrapN(ringPhase + (spinV * dt) / 1000); busy = true;
+          if (nearestK() !== sel) choose(nearestK(), true, 1);
+        } else {
+          // Stopped, by the pointer or a choice by hand, the ring settles on
+          // the chosen case (at most half a case away), so one caught
+          // mid-turn finishes turning out; under the pointer it then waits
+          // a beat before it turns again.
+          let d = wrapN(goal - ringPhase); if (d > N / 2) d -= N;
+          if (Math.abs(d) > 1e-3) { ringPhase = wrapN(ringPhase + d * a(0.085)); busy = true; } else { ringPhase = goal; settling = false; }
+          if (held && !sheet) holdUntil = Math.max(holdUntil, now + 1200);
+          if (turning) busy = true;
+        }
+      }
+      // The front case leans toward the pointer while it is over it, and
+      // drifts a little with it anywhere else.
+      let tX = 0, tY = 0;
+      if (pointer.in && !mob && frontK >= 0 && !sheet) {
+        const u = tapes[frontK].userData, bw = u.bx1 - u.bx0, bh = u.by1 - u.by0, cx = (u.bx0 + u.bx1) / 2, cy = (u.by0 + u.by1) / 2;
+        if (hoverK === frontK && bw > 0) { tY = clamp((pointer.x - cx) / (0.55 * bw), -1, 1) * 0.157; tX = clamp((pointer.y - cy) / (0.5 * bh), -1, 1) * 0.105; }
+        else tY = clamp((pointer.x / W - 0.5) * 2, -1, 1) * 0.044;
+      }
+      tiltX = near(tiltX, tX, 0.11, 1e-4); tiltY = near(tiltY, tY, 0.11, 1e-4);
     }
+    frontO = 0; frontK = -1;
     tapes.forEach((g, k) => {
       const u = g.userData;
       if (play && k === play.k) { applyCase(g, tp); return; }
-      u.open = near(u.open, opened === k ? 1 : 0, 0.075);
-      const gone = opened >= 0 && opened !== k ? 1 : 0;
+      if (!(sheet && sheet.k === k)) u.open = near(u.open, opened === k ? 1 : 0, 0.075);
+      // Another tape open: a ring case simply hides behind the page (the
+      // sheet has covered it); a section's copy flies off as before.
+      const inRack = RACK.includes(k);
+      const hidden = inRack && opened >= 0 && opened !== k;
+      const gone = !inRack && opened >= 0 && opened !== k ? 1 : 0;
       if (opened >= 0) u.side = k < opened ? 1 : -1;
-      u.away = near(u.away, gone, gone ? 0.05 + 0.05 / (1 + Math.abs(k - opened)) : 0.09);
+      u.away = hidden ? 0 : near(u.away, gone, gone ? 0.05 + 0.05 / (1 + Math.abs(k - opened)) : 0.09);
       u.turn = near(u.turn, opened === k ? turnTo : 0, turning ? 0.35 : 0.1);
       const tx = opened === k && pointer.in && !mobile() ? clamp((pointer.x / W - 0.5) * 2, -1, 1) : 0;
       const ty = opened === k && pointer.in && !mobile() ? clamp((pointer.y / H - 0.5) * 2, -1, 1) : 0;
@@ -1975,17 +2437,24 @@ if (renderer) {
       // Home: hanging in the rack, or chosen and nearer, or wherever a
       // section's copy of it was clicked. Kept in page coordinates, so it
       // holds to the page as it scrolls, and eased toward its place.
-      const inRack = RACK.includes(k);
       if (opened === k) u.went = true;
       if (u.from && u.went && opened !== k && u.open < 0.01) { u.from = null; u.went = false; if (inRack) u.snap = true; }
       if (home) {
         let tgt = null;
         if (u.from) { const at = anchorPose(u.from); if (at) tgt = { x: at.x + W / 2, y: H / 2 - at.y + scrollY, s: at.s, z: u.from.z, q: poseQ(qPose, u.from.pose, u.from.tilt, u.from.yaw, u.from.roll) }; }
         else if (inRack && ringC) {
-          const th = ((RACK.indexOf(k) - ringPhase) / ringC.N) * Math.PI * 2, c = Math.cos(th), f = Math.pow(Math.max(0, c), 8);
-          const hgt = ringC.ch + (ringC.front - ringC.ch) * f;
-          const lean = f > 0.5 && pointer.in && !mobile() ? clamp((pointer.x / W - 0.5) * 2, -1, 1) * 0.14 * f : 0;
-          tgt = { x: ringC.x + ringC.rx * Math.sin(th), y: ringC.y + ringC.rv * c, s: hgt / w, z: ringC.rz * c + f * 40, q: poseQ(qPose, "front", 0, 0.3 + 0.3 * Math.sin(th) + lean, 0) };
+          // r is the case's distance from the front, in cases; th its place
+          // on the ring. Its openness o eases in over the last case of the
+          // way: a spine turns out to a cover, pulls forward, lifts, and
+          // leans 4.5° as it arrives at the front.
+          const N = ringC.N; let r = (RACK.indexOf(k) - ringPhase) % N; r = ((r + N * 1.5) % N) - N / 2;
+          const th = (r / N) * Math.PI * 2, c = Math.cos(th);
+          const o = sstep(Math.max(0, 1 - Math.abs(r))); u.o = o; u.c = c;
+          if (o > frontO) { frontO = o; frontK = k; }
+          const hgt = ringC.ch + (ringC.front - ringC.ch) * o;
+          const shut = Math.PI / 2 + th;
+          tgt = { x: ringC.x + ringC.rx * Math.sin(th), y: ringC.y + ringC.rv * c - o * ringC.hh * 0.025, s: hgt / w, z: ringC.rz * c + o * 90,
+            q: poseQ(qPose, "front", tiltX * o, shut * (1 - o) + tiltY * o, LEAN * o) };
         }
         if (tgt) {
           if (!u.hq || u.snap) { u.hq = (u.hq ?? new THREE.Quaternion()).copy(tgt.q); u.hx = tgt.x; u.hy = tgt.y; u.hs = tgt.s; u.hz = tgt.z; u.snap = false; }
@@ -1996,32 +2465,67 @@ if (renderer) {
           }
         }
       }
-      u.hover = near(u.hover, home && hovered === k && k !== sel ? 1 : 0, 0.16);
-      u.sat.value = near(u.sat.value, opened === k || k === sel || !inRack ? 1 : 0.22 + 0.6 * u.hover, 0.1);
+      // A hovered spine lifts, like a finger pulling it halfway out.
+      u.hover = near(u.hover, home && hovered === k && k !== sel && !sheet ? 1 : 0, 0.18);
+      u.sat.value = near(u.sat.value, opened === k || k === sel || !inRack || (sheet && sheet.k === k) ? 1 : 0.5 + 0.5 * u.hover, 0.1);
+      // Light falls on the case at the front; the rest of the tower stands
+      // in its own shade by its angle (the back at 52%, the sides at 56%),
+      // brightening as each case turns forward or is touched.
+      // The poster tape's cream J-card is held back a little more, so it
+      // never outshines the chosen case.
+      u.dim.value = near(u.dim.value, opened === k || !inRack || (sheet && sheet.k === k) ? 1 : Math.min(1, 0.52 + 0.04 * (1 + (u.c ?? 0)) + 0.44 * u.o + 0.3 * u.hover) * (u.t.art ? 0.82 + 0.18 * u.o : 1), 0.1);
       // Opened before it ever had a place on home (a link straight to its
       // page): it comes up from below.
       if (!u.hq) { if (opened !== k) { g.visible = false; return; } u.hq = UPRIGHT.clone(); u.hx = W / 2; u.hy = scrollY + H * 1.6; u.hs = openScale; u.hz = 0; }
-      const e = ease(u.open);
-      const hx = u.hx - W / 2, hy = H / 2 - (u.hy - scrollY) + u.hover * 10 + (u.side || -1) * u.away * H * 1.4, hz = u.hz + u.hover * 26;
+      const e = u.raw ? u.open : ease(u.open);
+      const lift = u.hover * (inRack ? w * u.hs * 0.06 : 10);
+      const hx = u.hx - W / 2, hy = H / 2 - (u.hy - scrollY) + lift + (u.side || -1) * u.away * H * 1.4, hz = u.hz + u.hover * 30;
       const oy = mobile() ? openY - scrollY : openY;
       g.position.set(hx + (openX - hx) * e, hy + (H / 2 - oy - hy) * e, hz * (1 - e));
       g.scale.setScalar(u.hs + (openScale - u.hs) * e);
       qB.setFromAxisAngle(Y, 0.5 + u.turn + u.px * 0.18).multiply(UPRIGHT);
       qT.setFromAxisAngle(X, u.py * 0.08); qB.premultiply(qT);
       g.quaternion.slerpQuaternions(u.hq, qB, e);
-      g.visible = u.away < 0.995 && (inRack || !!u.from || opened === k || u.open > 0.01);
-      // On the ring, each case's link sits over the case itself.
-      if (ringC && inRack && u.open < 0.01) {
-        const li = listEl.children[RACK.indexOf(k)], f = camZ / Math.max(1, camZ - g.position.z);
-        const hgt = w * g.scale.x * f, wid = hgt * 0.68, sx = W / 2 + g.position.x * f, sy = H / 2 - g.position.y * f;
-        li.style.cssText = `transform: translate(${(sx - heroR.left - wid / 2).toFixed(1)}px, ${(sy - heroR.top - hgt / 2).toFixed(1)}px); width: ${wid.toFixed(1)}px; height: ${hgt.toFixed(1)}px; z-index: ${Math.round(600 + g.position.z)}`;
+      g.visible = !hidden && u.away < 0.995 && (inRack || !!u.from || opened === k || u.open > 0.01);
+      // On the ring, each case's link sits over the case itself, as it
+      // shows on screen: a thin box over a spine, a wide one over a cover.
+      if (ringC && inRack && u.open < 0.01 && g.visible) {
+        const li = listEl.children[RACK.indexOf(k)], b = screenBox(u.mesh, fbox);
+        const hgt = b.y1 - b.y0, wid = Math.max(b.x1 - b.x0, hgt * 0.22), cx = (b.x0 + b.x1) / 2;
+        u.bx0 = cx - wid / 2; u.bx1 = cx + wid / 2; u.by0 = b.y0; u.by1 = b.y1;
+        li.style.cssText = `transform: translate(${(u.bx0 - heroR.left).toFixed(1)}px, ${(b.y0 - heroR.top).toFixed(1)}px); width: ${wid.toFixed(1)}px; height: ${hgt.toFixed(1)}px; z-index: ${Math.round(600 + g.position.z)}`;
       }
     });
     for (const p of props) { if (!home) { p.g.visible = false; continue; } if (placeProp(p)) busy = true; }
+    if (home && frontK >= 0 && !sheet) {
+      // The chosen case's contact shadow, under its feet.
+      const u = tapes[frontK].userData, fw = (u.bx1 - u.bx0) * 1.16, fh = 14 + 22 * frontO;
+      footEl.style.cssText = `left:${((u.bx0 + u.bx1) / 2 - fw / 2 - heroR.left).toFixed(0)}px;top:${(u.by1 - fh / 2 - 4 - heroR.top).toFixed(0)}px;width:${fw.toFixed(0)}px;height:${fh.toFixed(0)}px;opacity:${(0.35 + 0.65 * frontO).toFixed(2)}`;
+    } else footEl.style.cssText = "";
     if (play) { stepPlay(tp, dt / 1000); busy = true; }
-    renderer.render(scene, camera);
+    // The cursor trails the pointer and names what is under it.
+    if (fine && cur.on && home) {
+      cur.x = near(cur.x, pointer.x, 0.25, 0.3); cur.y = near(cur.y, pointer.y, 0.25, 0.3);
+      curEl.style.transform = `translate3d(${cur.x.toFixed(1)}px, ${cur.y.toFixed(1)}px, 0)`;
+      // "Open" over the chosen case (a click opens it), the small ring over
+      // any other (a click chooses it).
+      const st = sheet ? "" : drag?.on ? "drag" : hoverK >= 0 && hoverK === sel ? "open" : hoverK >= 0 ? "spine" : cur.btn ? "btn" : "";
+      if (curEl.dataset.st !== st) curEl.dataset.st = st;
+    }
+    if (sheet) { stepSheet(now); busy = true; }
+    if (sheet) {
+      // The sheet and the case riding in it draw over everything else.
+      renderer.autoClear = false; renderer.clear();
+      camera.layers.set(0); renderer.render(scene, camera);
+      renderer.clearDepth();
+      camera.layers.set(1); renderer.render(scene, camera);
+      camera.layers.set(0); renderer.autoClear = true;
+    } else renderer.render(scene, camera);
     drawRing();
     if (busy) kick();
+    // Holding still after a choice, the ring needs a frame when the hold
+    // ends to turn again, whether or not the pointer moves meanwhile.
+    else if (home && opened < 0 && !sheet && Number.isFinite(holdUntil) && now < holdUntil) { clearTimeout(resumeTimer); resumeTimer = setTimeout(kick, holdUntil - now + 30); }
   }
   addEventListener("scroll", () => { progress(); if (readerEl.hidden) kick(); }, { passive: true });
   addEventListener("resize", resize);
@@ -2035,6 +2539,8 @@ if (renderer) {
 
 /* --------------------------------------------------------- v3: sections */
 choose(sel, true);
+bandLive = true;
+addEventListener("resize", () => setTabs(TAPES[sel].side));
 // Each home section is its own module (sections/CONTRACT.md); one that
 // fails to load leaves the rest of the page working.
 const api = {
@@ -2079,8 +2585,12 @@ addEventListener("keydown", (e) => {
   goUp();
 });
 
+let viaSheet = false;
 function route() {
   resetPlayer();
+  // A sheet still growing when the address changes is finished at once;
+  // one that has just filled the screen hands over to the page here.
+  viaSheet = finishSheet() === "open";
   const r = parse();
   const h0 = location.hash || "#/";
   let i = history.state?.i;
@@ -2096,13 +2606,18 @@ function route() {
   document.body.classList.toggle("opened", r.k >= 0);
   up.hidden = r.k < 0 || !!r.piece;
   if (r.k < 0) {
+    // Back from a tape's page: the sheet shrinks to the case's place on the
+    // ring, the case riding in it, the page's text clipped away with it.
+    const closing = was.k >= 0 && !was.piece && !tapeEl.hidden && tapeEl.dataset.key === TAPES[was.k]?.key, ty = scrollY;
     readerEl.hidden = true; tapeEl.hidden = true; stackEl.hidden = false;
     document.documentElement.style.removeProperty("--ground"); document.documentElement.style.removeProperty("--accent");
     groundTo.set("#14110f");
     opened = -1; turnTo = 0;
+    holdUntil = Math.min(holdUntil, performance.now() + 6000);
     scrollTo(0, stackScroll); stackSmooth = stackScroll;
     remeasure();
     if (was.k >= 0) (tapes[was.k]?.userData.from?.el ?? listEl.children[RACK.indexOf(was.k)]?.firstChild)?.focus({ preventScroll: true });
+    if (closing && RACK.includes(was.k) && !tapes[was.k]?.userData.from) closeSheet(was.k, ty);
     kick();
     return;
   }
@@ -2120,11 +2635,14 @@ function route() {
     setTimeout(() => $(".r-title", readerEl)?.focus({ preventScroll: true }), 50);
   } else {
     readerEl.hidden = true;
-    const fresh = was.k !== r.k || tapeEl.hidden;
+    const fresh = was.k !== r.k || tapeEl.hidden || viaSheet;
     if (tapeEl.dataset.key !== t.key) { renderTape(t, r.k); tapeEl.dataset.key = t.key; }
     tapeEl.hidden = false;
     layoutOpen();
     scrollTo(0, was.piece && was.k === r.k ? tapeScroll : 0);
+    // Arriving through the sheet, the text is already rising; otherwise
+    // the lines rise now.
+    if (fresh && !was.piece && !viaSheet) riseText(60);
     if (fresh) setTimeout(() => (was.piece ? $(`a[href="#/${t.key}/${was.piece}"]`, tapeEl) : $(".t-title", tapeEl))?.focus({ preventScroll: true }), 420);
   }
   kick();
