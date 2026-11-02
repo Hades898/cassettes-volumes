@@ -322,10 +322,12 @@
   .hero .foot { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.3) 45%, rgba(0, 0, 0, 0) 100%); }
   .webgl-off .hero .table, .webgl-off .hero .foot { display: none; }
 
-  /* The two sides, as tabs on the band: real buttons, and a paper block
-     that slides to the side the ring is showing. */
-  .band .lead { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; align-self: center; }
-  .band .tabs { position: relative; display: inline-flex; }
+  /* The two sides, as tabs under the band's title: real buttons, and a
+     paper block that slides to the side the ring is showing. The pressed
+     tab names the side, so the title block carries no separate subline. */
+  .band .lead { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; align-self: center; }
+  .band .tabs { position: relative; display: inline-flex; vertical-align: top; }
+  .band .title .tabs { margin-top: 10px; }
   .band .tabs button { position: relative; z-index: 1; appearance: none; background: none; border: 1px solid rgba(255, 255, 255, 0.85); margin-left: -1px; height: 36px; padding: 0 14px; font: 500 12px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; white-space: nowrap; cursor: pointer; transition: color 450ms cubic-bezier(0.2, 0.8, 0.2, 1); }
   .band .tabs button:first-child { margin-left: 0; }
   .band .tabs button[aria-pressed="true"] { color: var(--teal); }
@@ -334,21 +336,21 @@
   .band .tabs .ind { position: absolute; z-index: 0; left: 0; top: 0; height: 100%; width: 0; background: #fff; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1), width 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 
   /* The band: teal, on the slant, naming the chosen playlist. Each line
-     is a mask: the new text slides up through it, the old slides out. */
-  .band { position: absolute; z-index: 0; left: -6%; right: -6%; top: calc(var(--hh) * 0.69); height: calc(var(--hh) * 0.2); background: var(--teal); transform: rotate(-7deg); transform-origin: 50% 50%; color: #fff; display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) 1fr; align-items: center; padding: 0 calc(6% + var(--gutter)); }
+     is a mask, exactly its own line box: the old text slides fully out of
+     it, then the new slides in, so no line is ever drawn over another. */
+  .band { position: absolute; z-index: 0; left: -6%; right: -6%; top: calc(var(--hh) * 0.69); height: max(calc(var(--hh) * 0.2), 146px); background: var(--teal); transform: rotate(-7deg); transform-origin: 50% 50%; color: #fff; display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) 1fr; align-items: center; padding: 0 calc(6% + var(--gutter)); }
   .band::after { content: ""; position: absolute; z-index: -1; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .42 0 0 0 0 .38 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E"); mix-blend-mode: multiply; opacity: 0.55; pointer-events: none; }
-  .band .mask { position: relative; clip-path: inset(0); padding-block: 0.14em; margin-block: -0.14em; }
+  .band .mask { position: relative; clip-path: inset(0); }
   .band .mask > * { display: block; }
-  .band .mask > .leave { position: absolute; left: 0; right: 0; top: 0.14em; }
+  .band .mask > .leave { position: absolute; left: 0; right: 0; top: 0; }
   /* A fixed width, so a row leaving the mask wraps the same as it did. */
   .band .tags { width: min(22rem, 100%); }
   .band .tags .row { display: flex; flex-wrap: wrap; gap: 4px 6px; }
   .band .tags .row > span { background: #fff; color: var(--teal); border: 1px solid #fff; padding: 2px 7px; font: 400 15px/1.15 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; box-shadow: inset 0 0 0 1.5px var(--teal); }
-  .band .title { text-align: center; }
+  .band .title { grid-column: 2; grid-row: 1; text-align: center; }
   .band .title small { display: block; font: 300 15px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; }
-  .band .title h2 { margin: calc(6px - 0.14em) 0 calc(4px - 0.14em); font: 400 clamp(2.4rem, 1.4rem + 3vw, 4.25rem)/0.92 var(--font-display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
-  .band .title .sub { display: block; font: 300 15px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; }
-  .band .meta { justify-self: end; font: 300 italic 1rem/1.25 var(--font-ui); }
+  .band .title h2 { margin: 6px 0 4px; font: 400 clamp(2.4rem, 1.4rem + 3vw, 4.25rem)/0.92 var(--font-display); letter-spacing: -0.005em; text-transform: uppercase; text-wrap: balance; }
+  .band .meta { grid-column: 3; grid-row: 1; justify-self: end; font: 300 italic 1rem/1.25 var(--font-ui); }
   .band .meta .row { display: flex; gap: 22px; }
   .band .meta b { font-weight: 600; }
   .band .meta span { display: block; }
@@ -408,6 +410,9 @@
 
   .webgl-off .slot, .no3d .slot { color: inherit; font: 400 12px/1.25 var(--font-ui); padding: 8px; border: 1px dashed currentColor; background: rgba(255, 255, 255, 0.08); }
   .webgl-off .rack .slot { color: #fff; }
+  /* The ring's link names are for the accessibility tree only (the case is
+     the picture); without WebGL they are the links' visible text. */
+  .webgl-off .rack .slot .sr { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
 
   @media (max-width: 760px) {
     :root { --site-h: 96px; }
@@ -419,10 +424,12 @@
     .site .sections { justify-content: flex-start; gap: 22px; }
     .hero { height: 760px; }
     .hero { --hh: 780px; --cw: calc((100vw - 24px) / 5.65); --dw: 44vw; --rt: 16px; --dt: 118px; }
-    .band { grid-template-columns: 1fr; top: 430px; height: 236px; transform: rotate(-7deg); padding: 14px calc(6% + 18px); gap: 6px; align-content: center; }
-    .band .lead { order: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; align-self: start; }
+    .band { grid-template-columns: 1fr; top: 430px; height: 236px; transform: rotate(-7deg); padding: 14px calc(6% + 18px); gap: 8px; align-content: center; }
+    .band .lead, .band .title, .band .meta { grid-column: 1; grid-row: auto; }
+    .band .lead { order: 2; align-items: center; align-self: start; }
+    .band .tags .row { justify-content: center; }
     .band .tabs button { height: 40px; padding: 0 12px; }
-    .band .meta { order: 3; justify-self: center; margin-top: 4px; }
+    .band .meta { order: 3; justify-self: center; margin-top: 2px; }
     .hero .wedge { height: 124px; clip-path: none; }
     .band .zig { display: none; }
     .hero .about { left: 0; right: 0; width: auto; bottom: 0; padding: 14px 16px 16px; background: var(--paper); }
@@ -491,14 +498,14 @@
     <i class="table" aria-hidden="true"></i><i class="foot" aria-hidden="true"></i>
     <ol class="rack" id="rack" aria-label="Vol. 01’s playlists: choose one"></ol>
     <div class="band" id="band">
-      <div class="lead">
+      <div class="title">
+        <small class="mask" id="b-kick"></small><h2 class="mask" id="b-name"></h2>
         <nav class="tabs" id="side-tabs" aria-label="Sides of Vol. 01">
           <button type="button" data-side="A" aria-pressed="true">Side A · Clouds</button><button type="button" data-side="B" aria-pressed="false">Side B · Shores</button>
           <i class="ind" aria-hidden="true"></i>
         </nav>
-        <div class="tags mask" id="b-tags" aria-label="Forms"></div>
       </div>
-      <div class="title"><small class="mask" id="b-kick"></small><h2 class="mask" id="b-name"></h2><span class="sub mask" id="b-sub"></span></div>
+      <div class="lead"><div class="tags mask" id="b-tags" aria-label="Forms"></div></div>
       <div class="meta mask" id="b-meta"></div>
       <i class="zig" aria-hidden="true"></i>
     </div>
@@ -656,7 +663,7 @@ addEventListener("keydown", () => { viaKeys = true; }, true);
 addEventListener("pointerdown", () => { viaKeys = false; }, true);
 RACK.forEach((k) => {
   const t = TAPES[k];
-  listEl.append(h("li", {}, h("a", { class: "slot", href: `#/${t.key}`, "data-k": k, text: tapeLabel(t) })));
+  listEl.append(h("li", {}, h("a", { class: "slot", href: `#/${t.key}`, "data-k": k }, h("span", { class: "sr", text: tapeLabel(t) }))));
 });
 listEl.addEventListener("dragstart", (e) => e.preventDefault());
 // A first click on a hanging case chooses it; a click on the chosen one,
@@ -710,29 +717,33 @@ tabsEl.addEventListener("click", (e) => {
   choose(k, false, Math.sign(d) || 1);
 });
 document.fonts.ready.then(() => setTabs(TAPES[sel].side));
-// The band's lines slide through their masks: the new text comes up from
-// below when the ring turns forward, down from above when it turns back.
-const SLIDE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+// The band's lines slide through their masks, each mask exactly its own
+// line box: the new text comes up from below when the ring turns forward,
+// down from above when it turns back. The two steps never overlap in time:
+// the old line is fully out of its box (110% of the taller of its height
+// and the box's) before the new one starts in, so a mask never holds two
+// lines, and no line is ever drawn over its neighbour.
+const SLIDE = "cubic-bezier(0.2, 0.8, 0.2, 1)", LEAVE = "cubic-bezier(0.4, 0, 1, 1)", LEAVE_MS = 240;
 let bandLive = false;
 function slideIn(mask, node, dir, delay = 0) {
   const old = [...mask.children].filter((c) => !c.classList.contains("leave"));
   mask.append(node);
   if (!bandLive || reduce) { for (const c of [...mask.children]) if (c !== node) c.remove(); return; }
-  // A line still arriving (the ring turned on past it) leaves from where it
-  // is, and the new line starts as far again beyond it, so the two travel
-  // together and never meet. A leaving line travels the taller of its own
-  // height and the mask's, so none of it is left showing.
-  let ahead = 0;
   for (const c of old) {
     const from = getComputedStyle(c).transform;
     const ty = from === "none" ? 0 : new DOMMatrixReadOnly(from).m42;
-    const pct = c.offsetHeight ? (ty / c.offsetHeight) * 100 : 0;
-    if (Math.sign(pct) === dir) ahead = Math.max(ahead, Math.abs(pct));
     c.classList.add("leave"); c.setAttribute("aria-hidden", "true");
-    const travel = Math.max(c.offsetHeight, mask.offsetHeight) * 1.18;
-    c.animate([{ transform: `translateY(${ty.toFixed(2)}px)` }, { transform: `translateY(${(-dir * travel).toFixed(2)}px)` }], { duration: 650, delay, easing: SLIDE, fill: "both" }).onfinish = () => c.remove();
+    const h = c.offsetHeight, H = Math.max(h, mask.offsetHeight), out = H * 1.1;
+    // One still waiting below (or above) its box just goes.
+    if (Math.abs(ty) >= H) { c.remove(); continue; }
+    // The box keeps the old line's height until it is out, so a taller
+    // line is not cut short when a shorter one is appended.
+    if (h > mask.offsetHeight) { mask.style.minHeight = `${h}px`; setTimeout(() => { mask.style.minHeight = ""; }, LEAVE_MS); }
+    const to = -dir * out, ms = Math.round(LEAVE_MS * Math.min(1, Math.abs(to - ty) / out));
+    c.animate([{ transform: `translateY(${ty.toFixed(2)}px)` }, { transform: `translateY(${to.toFixed(2)}px)` }], { duration: ms, easing: LEAVE, fill: "both" }).onfinish = () => c.remove();
   }
-  node.animate([{ transform: `translateY(${dir * (118 + ahead)}%)` }, { transform: "translateY(0)" }], { duration: 650, delay, easing: SLIDE, fill: "both" });
+  const H = Math.max(node.offsetHeight, mask.offsetHeight);
+  node.animate([{ transform: `translateY(${(dir * H * 1.1).toFixed(2)}px)` }, { transform: "translateY(0)" }], { duration: 520, delay: LEAVE_MS + delay, easing: SLIDE, fill: "both" });
 }
 // Chosen by hand, the ring holds still a while before it turns again, and
 // finishes its turn to the chosen case even under the pointer.
@@ -742,11 +753,10 @@ function choose(k, auto = false, dir = 1) {
   if (!auto) { holdUntil = performance.now() + 6000; settling = true; }
   if (k === bandK) return;
   sel = bandK = k;
-  const t = TAPES[k], side = sideName(t), forms = [...new Set(t.slugs.map((s) => PIECES[s].form))];
+  const t = TAPES[k], forms = [...new Set(t.slugs.map((s) => PIECES[s].form))];
   for (const a of listEl.querySelectorAll("a.slot")) a.toggleAttribute("aria-current", Number(a.dataset.k) === k);
   slideIn($("#b-kick"), h("span", { text: `Playlist ${two(numOf(t))}` }), dir, 0);
   slideIn($("#b-name"), h("span", { text: t.name }), dir, 40);
-  slideIn($("#b-sub"), h("span", { text: side ? `Side ${t.side} · ${side}` : `Side ${t.side}` }), dir, 80);
   slideIn($("#b-tags"), h("span", { class: "row" }, forms.map((x) => h("span", { text: x }))), dir, 60);
   slideIn($("#b-meta"), h("span", { class: "row" },
     h("span", {}, "Vol.", h("b", { text: t.vol.n })),
@@ -868,8 +878,11 @@ function renderTape(t, k) {
   tapeEl.style.setProperty("--ground", t.ground);
   tapeEl.style.setProperty("--accent", t.accent);
 }
-// The page's lines rise out of their masks, one after another.
+// The page's lines rise out of their masks, one after another. A line's
+// mask holds its margins too, so "out" is measured to the mask's bottom
+// edge, not to the line's own height: no glyph top is left in the mask.
 let riseTimer = 0;
+const maskOut = (el) => el.parentElement.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 2;
 function riseText(delay0 = 0) {
   if (reduce) return;
   clearTimeout(riseTimer);
@@ -879,7 +892,7 @@ function riseText(delay0 = 0) {
     const thin = el.offsetHeight < 6;
     for (const an of el.getAnimations()) an.cancel();
     if (thin) el.style.transformOrigin = "0 50%";
-    el.animate(thin ? [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }] : [{ transform: "translateY(110%)" }, { transform: "translateY(0)" }], { duration: 900, delay: delay0 + Math.min(i, 9) * 75, easing: SLIDE, fill: "backwards" });
+    el.animate(thin ? [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }] : [{ transform: `translateY(${maskOut(el).toFixed(1)}px)` }, { transform: "translateY(0)" }], { duration: 900, delay: delay0 + Math.min(i, 9) * 75, easing: SLIDE, fill: "backwards" });
   });
   riseTimer = setTimeout(() => tapeEl.classList.remove("arriving"), delay0 + 9 * 75 + 950);
 }
@@ -2058,7 +2071,8 @@ if (renderer) {
     [...tapeEl.querySelectorAll(".col > .m > *")].forEach((el, i) => {
       for (const an of el.getAnimations()) an.cancel();
       const thin = el.offsetHeight < 6;
-      el.animate(thin ? [{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }] : [{ transform: "translateY(0)" }, { transform: "translateY(110%)" }], { duration: 260, delay: Math.min(i, 9) * 14, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+      // All out within the 300ms before the sheet starts to shrink.
+      el.animate(thin ? [{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }] : [{ transform: "translateY(0)" }, { transform: `translateY(${maskOut(el).toFixed(1)}px)` }], { duration: 220, delay: Math.min(i, 9) * 8, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
     });
     tapes[k].userData.mesh.layers.set(1);
     // grow runs 1 → 0 here: the sheet starts as the page's ground and is
@@ -2101,7 +2115,11 @@ if (renderer) {
     const pad = 4 + 10 * grow;
     const fx = (W / 2) * cs - (H / 2) * sn, fy = (W / 2) * sn + (H / 2) * cs;
     const cx = ((sbox.x0 + sbox.x1) / 2) * (1 - grow) + fx * grow, cy = ((sbox.y0 + sbox.y1) / 2) * (1 - grow) + fy * grow;
-    const bw = (sbox.x1 - sbox.x0 + pad * 2) * (1 - grow) + W * 1.3 * grow, bh = (sbox.y1 - sbox.y0 + pad * 2) * (1 - grow) + H * 1.3 * grow;
+    // Opening, the sheet reaches its full size ahead of its place, so it
+    // covers the corners of the screen (the home header's white edge)
+    // before it looks full; closing, it shrinks in step as before.
+    const gs = s.mode === "open" ? Math.min(1, grow * 1.4) : grow;
+    const bw = (sbox.x1 - sbox.x0 + pad * 2) * (1 - gs) + W * 1.3 * gs, bh = (sbox.y1 - sbox.y0 + pad * 2) * (1 - gs) + H * 1.3 * gs;
     // Back to screen space, then to the plane's depth.
     const ox = cx * cs + cy * sn, oy = -cx * sn + cy * cs;
     const f = (camZ - SHEET_Z) / camZ;
