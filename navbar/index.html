@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cassette Navbar</title>
+<meta name="description" content="Prototype of raerae's cassette navbar idea (Figma 804:2019, 806:2100): a cassette sticker that opens into a 3D tape with the sections on its ribbons. Not the website.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500&family=Inter:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="assets/nav.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<!-- Everything inside #app is drawn by assets/nav.js from the toolbar's state. -->
+<div id="app"></div>
+<!-- Without JavaScript: the sections as plain links. -->
+<noscript>
+  <nav aria-label="Sections" style="padding:16px 24px;font:300 18px/1.6 Inter,sans-serif;color:#48382a;box-shadow:inset 0 -0.5px 0 #48382a">
+    <a href="/en/">Cassettes</a> ·
+    <a href="/en/text/">Catalogue</a> · <a href="/en/volumes/">Volumes</a> · <a href="/en/visual/">Artworks</a> · <a href="/en/interviews/">Interviews</a> ·
+    <a href="/en/exclusives/">Extended Play</a> · <a href="/en/curation/">Bonus Tracks</a> · <a href="/en/contributors/">Contributors</a> · <a href="/en/contribute/">Submissions</a> ·
+    <a href="/en/about/">About</a> · <a href="/en/search/">Search</a> · <a href="/ar/" lang="ar">العربية</a>
+  </nav>
+</noscript>
+<!-- Prototype chrome: not part of the design. -->
+<aside id="proto" class="proto" dir="ltr" lang="en" aria-label="Prototype controls"></aside>
+<script type="module" src="assets/nav.js"></script>
+</body>
+</html>
